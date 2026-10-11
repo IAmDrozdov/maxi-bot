@@ -96,7 +96,8 @@ export async function mountNotes(root, ctx) {
   overlay.hidden = true;
   root.replaceChildren(main, overlay);
 
-  // This view's part of the title row: «◧» and «🔍»; the Search field or «Секции · Готово» in place of the row.
+  // This view's part of the title row: «◧», the Section and «🔍»; the Search field or «Секции · Готово» in place of
+  // the row.
   const railToggle = el("button", "icon-btn", "◧");
   railToggle.setAttribute("aria-label", "Полоса секций");
   const searchButton = el("button", "icon-btn", "🔍");
@@ -132,7 +133,7 @@ export async function mountNotes(root, ctx) {
   retryButton.onclick = () => refresh();
   const addButton = el("button", "btn wide ghost", "+ Новая секция");
   const listCol = el("div", "list-col");
-  listCol.append(secHead.node, secButton.node, notice, groupsBox, empty, retryButton, addButton);
+  listCol.append(notice, groupsBox, empty, retryButton, addButton);
   const notes = el("div", "notes");
   notes.append(rail, listCol);
   main.append(notes);
@@ -163,14 +164,19 @@ export async function mountNotes(root, ctx) {
     return button;
   }
 
-  // A Section's caption: its name, «· готово» on the done list, the number of Items.
+  // A Section's caption: its name, «✓» on the done list, the number of Items.
   function makeHead(tag) {
     const node = el(tag, "sec-head");
     const name = el("span", "name");
-    const st = el("span", "st", "· готово");
+    const st = el("span", "st", "✓");
+    st.setAttribute("role", "img");
+    st.setAttribute("aria-label", "готово");
     const n = el("span", "n");
     node.append(name, st, n);
-    if (tag === "button") node.append(el("span", "caret"));
+    if (tag === "button") {
+      node.append(el("span", "caret"));
+      node.setAttribute("aria-haspopup", "menu");
+    }
     return { node, name, st, n };
   }
 
@@ -275,6 +281,7 @@ export async function mountNotes(root, ctx) {
     const status = statusOf(g.slug);
     node.classList.toggle("overdue", g === overdue);
     setText(name, sectionLabel(g.section));
+    node.title = g.section.name; // the title row may cut the name short
     st.hidden = status !== "done";
     setText(n, String(g.section[status + "_count"] || 0));
   }
@@ -313,7 +320,7 @@ export async function mountNotes(root, ctx) {
     barMode = mode;
     if (mode === "edit") ctx.setBar({ replace: editBar });
     else if (mode === "search") ctx.setBar({ replace: [search, cancelSearch] });
-    else ctx.setBar({ left: [railToggle], right: [searchButton] });
+    else ctx.setBar({ left: [railToggle], after: [secHead.node, secButton.node], right: [searchButton] });
   }
 
   let rowActions = null;

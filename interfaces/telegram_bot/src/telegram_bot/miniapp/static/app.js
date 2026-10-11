@@ -98,7 +98,7 @@ async function boot() {
         isCurrent: () => current === key,
         // A cross-link inside the place, e.g. a Section bar on the Dashboard opening the list.
         open: (to, arg) => select(place, to, arg, true),
-        // The view's own part of the top bar: { left, right, replace } (nav.js mountTopbar).
+        // The view's own part of the top bar: { left, after, right, replace } (nav.js mountTopbar).
         setBar: (parts) => {
           entry.bar = parts;
           if (barKey === key) paintBar(entry);

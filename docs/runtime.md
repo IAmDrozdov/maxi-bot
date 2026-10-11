@@ -172,12 +172,15 @@ Funnel costs 250–450 ms a request, so the app is built to need few requests (A
   On the left is the Section rail (64 px): «⏰» while something is Overdue (every Section, todo only, earliest
   Due first), a button per Section in the Owner's order (its emoji, or the first two letters of its name, over
   the first ten characters of the name; dimmed when it has nothing to do), then «✓» and «✏️», captioned the
-  same way. The rest of the width is the selected Section: its
-  name, the count for the Status shown (`todo_count` / `done_count`) and its List, newest first, paged by
-  «Ещё»; an Item under several Sections shows in each. «✓» shows «Готово» instead of «Сделать» (one Status
+  same way. The rest of the width is the selected Section's List, newest first, paged by «Ещё»; an Item under
+  several Sections shows in each. The Section's name and the count for the Status shown (`todo_count` /
+  `done_count`) stand in the title row after the Place button («Заметки · записи ▾ 💼 Работа 7»): the name is
+  cut with «…» when the row is short (at 320 px only the count is left), and «✓» comes before the count on the
+  «Готово» list.
+  «✓» on the rail shows «Готово» instead of «Сделать» (one Status
   per view, notes ADR-0010) until it is tapped again, «⏰» is picked, the Dashboard opens a Section, or the app
   closes; «⏰» is always «Сделать». «◧» in the
-  title row hides the rail, and the Section's name then opens the list of Sections with their counts. «🔍»
+  title row hides the rail, and the Section's name in that row then opens the list of Sections with their counts. «🔍»
   (or the «/» key) puts the Search field in place of the title row: Search (`/api/notes/items?q=`, 300 ms
   after typing stops, at most 100 results) covers both Statuses and every text field but the URL, folded by
   the `fold()` SQL function the notes `Database` registers on each connection (casefold, «ё» as «е»). «✏️» is

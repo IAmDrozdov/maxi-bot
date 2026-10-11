@@ -386,7 +386,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   font-weight: 600;
   white-space: nowrap;
 }
-button.sec-head { height: 30px; margin-bottom: 2px; }
+/* In the title row the Section takes the room left and its name is cut first; at 320 px only the count is left. */
+.topbar .sec-head { flex: 0 1000 auto; width: auto; min-width: 0; height: 32px; margin: 0 0 0 -10px; padding: 3px 4px 0; overflow: hidden; }
 .sec-head .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .sec-head .n { color: var(--hint); font-weight: 400; font-variant-numeric: tabular-nums; }
 .sec-head .st { color: var(--good); font-weight: 400; }

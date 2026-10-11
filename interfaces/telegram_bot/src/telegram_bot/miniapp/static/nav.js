@@ -84,8 +84,9 @@ export function openMenu(anchor, items, { align = "left", at = null } = {}) {
 
 // places: [{ id, label }]; modes: [{ id, label, word }] (`word` follows the place's name on the button);
 // remembered(placeId) is the mode a tap on the place's name opens; go(placeId, modeId) and usage() run from the menu.
-// Returns { set({ place, mode, left, right, replace }) }: `left` and `right` are the view's own action nodes,
-// `replace` a row of nodes shown instead of the whole bar (Search, Section edit mode).
+// Returns { set({ place, mode, left, after, right, replace }) }: `left` and `right` are the view's own action nodes,
+// `after` what follows the place's name (the notes Section), `replace` a row of nodes shown instead of the whole bar
+// (Search, Section edit mode).
 export function mountTopbar(root, { places, modes, remembered, go, usage }) {
   const placeButton = el("button", "place");
   const name = el("span");
@@ -122,12 +123,12 @@ export function mountTopbar(root, { places, modes, remembered, go, usage }) {
       { icon: "⚙️", label: "Расходы", run: usage },
     ]);
 
-  function set({ place, mode: modeId, left = [], right: actions = [], replace = null }) {
+  function set({ place, mode: modeId, left = [], after = [], right: actions = [], replace = null }) {
     current = place;
     name.textContent = places.find((p) => p.id === place).label;
     mode.textContent = "· " + modes.find((m) => m.id === modeId).word;
     right.replaceChildren(...actions);
-    root.replaceChildren(...(replace ?? [...left, placeButton, right]));
+    root.replaceChildren(...(replace ?? [...left, placeButton, ...after, right]));
   }
 
   return { set };
