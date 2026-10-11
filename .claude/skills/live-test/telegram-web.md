@@ -33,6 +33,8 @@ bot chat's URL) live in `CLAUDE.local.md`, which is gitignored because this repo
 - Every snapshot excerpt, screenshot (~1.6k tokens) and log line stays in context for the rest of
   the run and is re-read on each later call. Screenshot only a case's checkpoint, keep evidence as
   file paths, and read an image back only when the case needs a visual judgement.
+- `upload_file` takes only files inside the workspace: copy a test file into `.local/` first. The
+  chat may not show new messages until «Go to bottom» is pressed.
 - Telegram's buttons ignore a synthetic `.click()`: use the MCP `click` with a uid from a snapshot.
   The menu button shows up as `button "Open bot command keyboard"`.
 - Forwarding: open the message's context menu (right-click, or hover → the arrow), choose Forward,
@@ -68,5 +70,7 @@ bot chat's URL) live in `CLAUDE.local.md`, which is gitignored because this repo
   **Bot API** ids. Telegram Web's own ids (`data-message-id`, six digits in a private chat) are a
   different numbering and fail with "message to delete not found". Read `tg_message_id` of the Item
   (older Items also `tg_ack_message_id`) before the case deletes the Item; a message with no Item
-  goes through the web context menu «Удалить» instead.
+  goes through the web context menu «Удалить» instead. Or derive its id: record the web id of every
+  message of the run, take one Capture as the anchor (its web id and its `tg_message_id`), and while
+  the run's web ids are consecutive, Bot API id = web id − the anchor's difference.
 - Test Items: Mini App → «Заметки · записи» → «🔍» → `🧪` → the row's «⋮» → «🗑 Удалить», then confirm (Search covers both Statuses).

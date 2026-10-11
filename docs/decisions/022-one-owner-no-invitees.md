@@ -1,6 +1,6 @@
 # ADR-022: The bot has one Owner and nobody else
 
-Status: Proposed (2026-10-11). Supersedes ADR-008 decision 3 (the access model: an admin, one-time invites, a whitelist) and its 2026-09-12 note that the admin can `/revoke` a user.
+Status: Accepted (2026-10-11). Supersedes ADR-008 decision 3 (the access model: an admin, one-time invites, a whitelist) and its 2026-09-12 note that the admin can `/revoke` a user.
 
 ## Context
 
