@@ -63,6 +63,8 @@ async function fetchItems(base, offset, want) {
 
 // What stands for a Section on the rail and in the Section menu: its emoji, else the first two letters of its name.
 const markOf = (section) => section.emoji || Array.from(section.name.trim()).slice(0, 2).join("");
+// A rail button's caption: the first ten characters of a name.
+const capOf = (name) => Array.from(name.trim()).slice(0, 10).join("").trimEnd();
 
 // ctx.isCurrent() is false while another view shows; ctx.setBar() sets this view's part of the title row.
 // Returns { show(arg), shown(), hide() }; arg: { section: slug } (a Dashboard Section bar or «просрочено») or
@@ -115,7 +117,7 @@ export async function mountNotes(root, ctx) {
   const railDone = railButton("✓", "Готово", toggleDone);
   railDone.classList.add("done");
   railDone.style.setProperty("--chip", "var(--good)");
-  const railEdit = railButton("✏️", "Правка секций", startEditing);
+  const railEdit = railButton("✏️", "Правка секций", startEditing, "Правка");
   railEdit.classList.add("small");
   const railSep = el("div", "rail-sep");
 
@@ -152,8 +154,10 @@ export async function mountNotes(root, ctx) {
   // The Items on screen: the results while searching, else the selected Section's.
   const shownItems = () => (searching() ? state.results.items : (groups.get(selected())?.items ?? []));
 
-  function railButton(text, label, onclick) {
-    const button = el("button", null, text);
+  // A rail button: a mark over a caption, the start of its label unless one is given.
+  function railButton(mark, label, onclick, cap = label) {
+    const button = el("button");
+    button.append(el("span", "mark", mark), el("span", "cap", capOf(cap)));
     button.setAttribute("aria-label", label);
     button.onclick = onclick;
     return button;
@@ -284,7 +288,8 @@ export async function mountNotes(root, ctx) {
         button = railButton("", section.name, () => pick(section.slug));
         railButtons.set(section.slug, button);
       }
-      setText(button, markOf(section));
+      setText(button.firstChild, markOf(section));
+      setText(button.lastChild, capOf(section.name));
       button.setAttribute("aria-label", section.name);
       button.title = section.name;
       button.style.setProperty("--chip", section.color);

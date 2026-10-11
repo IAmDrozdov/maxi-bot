@@ -341,28 +341,32 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 
 /* Заметки: the Section rail and one Section's rows; Search results by Section; edit mode */
-.notes { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; }
-.rail { flex: none; display: flex; flex-direction: column; gap: 3px; width: 44px; }
+.notes { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; }
+.rail { flex: none; display: flex; flex-direction: column; gap: 3px; width: 64px; }
 .rail button {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  width: 64px;
   height: 36px;
-  padding: 0;
+  padding: 0 0 0 3px; /* the selection bar's width: a ten-letter caption stays clear of it */
   overflow: hidden;
   border: 0;
   border-radius: 10px;
   background: transparent;
-  font-size: 18px;
   font-weight: 600;
   white-space: nowrap;
 }
-.rail button.abbr { color: var(--chip); font-size: 12px; }
+.rail .mark { font-size: 16px; line-height: 18px; }
+.rail .cap { max-width: 100%; overflow: hidden; color: var(--hint); font-size: 9.5px; font-weight: 500; line-height: 12px; }
+.rail button.abbr .mark { color: var(--chip); font-size: 12px; }
 .rail button.on { background: var(--card); box-shadow: inset 3px 0 0 var(--chip, var(--accent)); }
-.rail button.dim { opacity: 0.4; }
-.rail button.done { color: var(--good); font-size: 16px; }
-.rail button.small { font-size: 14px; }
+.rail button.on .cap { color: var(--text); }
+.rail button.dim .mark { opacity: 0.4; }
+.rail button.dim .cap { opacity: 0.7; }
+.rail button.done .mark { color: var(--good); }
+.rail button.small .mark { font-size: 14px; }
 .rail button:disabled { opacity: 0.25; cursor: default; }
 .rail-sep { height: 1px; margin: 3px 8px; background: var(--line); }
 .list-col { flex: 1; min-width: 0; }

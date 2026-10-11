@@ -172,9 +172,10 @@ Funnel costs 250–450 ms a request, so the app is built to need few requests (A
 
 - **Записи** (`notes.js`) reads Items through `/api/notes/items`, one `notes.domain.lists` List per request:
   `InSection` (`section`, `status`), `Overdue` (`overdue=true`), `Search` (`q`) and `Recheck` (`ids`).
-  On the left is the Section rail (44 px): «⏰» while something is Overdue (every Section, todo only, earliest
-  Due first), a button per Section in the Owner's order (its emoji, or the first two letters of its name;
-  dimmed when it has nothing to do), then «✓» and «✏️». The rest of the width is the selected Section: its
+  On the left is the Section rail (64 px): «⏰» while something is Overdue (every Section, todo only, earliest
+  Due first), a button per Section in the Owner's order (its emoji, or the first two letters of its name, over
+  the first ten characters of the name; dimmed when it has nothing to do), then «✓» and «✏️», captioned the
+  same way. The rest of the width is the selected Section: its
   name, the count for the Status shown (`todo_count` / `done_count`) and its List, newest first, paged by
   «Ещё»; an Item under several Sections shows in each. «✓» shows «Готово» instead of «Сделать» (one Status
   per view, notes ADR-0010) until it is tapped again, «⏰» is picked, the Dashboard opens a Section, or the app

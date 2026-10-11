@@ -1,6 +1,6 @@
 # ADR-021: The Mini App navigates by Place and Mode, and an Item is closed from the list
 
-Status: Accepted (2026-10-10). Supersedes ADR-020 decision 4 (tabs, the toggle, opening on the Dashboard); amends ADR-016 (decision 5: what a launch opens) and ADR-019 (decision 3: the phone also keeps the navigation memory).
+Status: Accepted (2026-10-10). Supersedes ADR-020 decision 4 (tabs, the toggle, opening on the Dashboard); amends ADR-016 (decision 5: what a launch opens) and ADR-019 (decision 3: the phone also keeps the navigation memory). Amended 2026-10-11: a rail button also shows the first ten characters of the Section's name under its mark; the rail is 64 px wide and 6 px from the list, which leaves the list 298 px of a 400 px page. Measured that day in headless Chrome at 400 × 644 on the demo data: 298 px still shows six «Работа» Items, 296 px shows five (decision 4).
 
 ## Context
 
