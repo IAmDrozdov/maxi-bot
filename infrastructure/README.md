@@ -175,7 +175,7 @@ host can leave root-owned side files that lock the bot out. Take a Backup instea
 ## Backups
 
 The Owner's Mac pulls a daily **Backup** into iCloud Drive (ADR-018). Each Backup holds both
-databases, verified on arrival, plus the bytes of every notes File and Voice. The copies are taken
+databases, verified on arrival, plus the bytes of every notes Item that has a file (a File, a Voice, a BotResult). The copies are taken
 by a one-off `docker compose run` container of the bot image, as its `app` user, so they work while
 the bot is down. Nothing else for it runs on the droplet.
 
@@ -208,7 +208,7 @@ uv run python infrastructure/backup.py uninstall
   infrastructure/backup.py run --source local` runs the whole pipeline on local databases. It sends
   no bot message: it logs "would send" instead.
 
-**Restore** a chosen day. Files and voice messages are not put back: they stay plain files under
+**Restore** a chosen day. Files, voice messages and BotResults are not put back: they stay plain files under
 `files/`, and the bot keeps serving them through their `file_id` while its token is the same.
 
 ```bash

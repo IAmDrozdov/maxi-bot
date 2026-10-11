@@ -1,5 +1,7 @@
 # Sections are tags, and Other is undeletable
 
+_Amended by ADR-0013: From the bot («От бота») is a second built-in Section that cannot be deleted; it holds every BotResult and nothing else._
+
 An Item belongs to one or more Sections (tag semantics, not folders), so a cross-cutting Item — a
 talk that is both *Посмотреть* and *Пет-проекты* — is not forced into one pile. The built-in
 *Other* Section cannot be deleted and receives any Item that would otherwise have no Section, so

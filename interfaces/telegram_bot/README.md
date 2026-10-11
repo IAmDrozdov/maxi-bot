@@ -16,7 +16,8 @@ Responsibilities:
   rebuilt every few finished jobs, cold-start priors until enough samples exist
 - inline-keyboard selection of languages, models, voice (persisted)
 - call `WORKFLOW.run` in a worker thread; one job at a time (FIFO queue)
-- deliver `FileDeliverable`s as documents and `AudioDeliverable`s as **voice messages** (see below)
+- deliver `FileDeliverable`s as documents and `AudioDeliverable`s as **voice messages** (see below),
+  each with 💾 В заметки under its first message
 - access control: the bot answers the Owner (`OWNER_TELEGRAM_ID`) in a private chat and drops
   every other update without a reply (`access.py`, ADR-022)
 - record every job (chars, cost USD + cost lines, facts, duration, status) for the Mini App's «Расходы» screen
@@ -94,7 +95,8 @@ neither process starts.
 ## Notes
 
 The Owner's text, files and voice messages are Captured at once; a single website link gets the
-usual card with 💾 В заметки on top, and 💾 saves it as a notes Item (`apps/notes`, ADR-015). The
+usual card with 💾 В заметки on top, and 💾 saves it as a notes Item (`apps/notes`, ADR-015). 💾 under a
+delivered result puts that message aside as a BotResult in the Section «От бота» (notes ADR-0013). The
 routing table, card lifecycle and notes path are in `docs/runtime.md`.
 
 ## Mini App (ADR-016)

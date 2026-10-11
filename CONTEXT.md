@@ -66,6 +66,6 @@ product vocabulary.
   Day in the diary) or its Dashboard («дашборд»). Remembered per Place. Not the notes "edit mode", which
   reorders Sections. Avoid: view, toggle, tab.
 - **Backup** — one day's off-droplet copy of everything the bot keeps: both databases, the bytes
-  of every notes File and Voice, and a manifest. Say Backup, not dump, snapshot or export.
+  of every notes Item that has a file (a File, a Voice, a BotResult), and a manifest. Say Backup, not dump, snapshot or export.
 - **Settings vs Config** — `shared.config.Settings` is env/secrets; `<Name>Config`
   is workflow behaviour with code defaults (ADR-004).

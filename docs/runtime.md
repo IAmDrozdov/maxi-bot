@@ -53,14 +53,16 @@ router order is not part of the rule. One row per `Kind`:
 
 Other routers: `start` (`/start` and `/help`, one help text), `settings_menu` and `status`
 (`/settings`, `/status`, `/cancel`).
-`notes` also takes the callbacks `JobCB save`, `NotesCB offer` / `restore` / `done` (a Reminder's
-✅ Готово marks the Item done and edits the message to «✅ сделано»). Router order still matters
+`notes` also takes the callbacks `JobCB save`, `ResultCB` (💾 under a delivered result, below) and
+`NotesCB offer` / `restore` / `done` (a Reminder's ✅ Готово marks the Item done and edits the
+message to «✅ сделано»). Router order still matters
 for commands that carry text (`/settings https://x`, `/help https://x`) and for
 `MenuCB(page='job')`, which `documents` claims.
 
 Callback-data prefixes (`keyboards.py`, `notes_ui.py`, max 64 bytes): `m` menu, `o` option
 picker, `s` set value, `t` try voice/model, `j` job actions (`run`/`settings`/`cancel`/`save`),
-`n` notes item actions (`offer`/`restore`/`done`). Pick a new letter for a new family.
+`n` notes item actions (`offer`/`restore`/`done`), `r` a delivered result (the job log's row id).
+Pick a new letter for a new family.
 
 ## The card lifecycle (`telegram_bot/cards.py`, handlers in `handlers/documents.py`)
 
@@ -77,7 +79,9 @@ offline harness.
    chat**.
 4. **Outcome:**
    - **Run** (*job*) puts a `Job` on the FIFO `JobQueue` (max 5 queued or running, one running at a time).
-     The worker edits the card with progress and delivers files or voice messages.
+     The worker edits the card with progress and delivers a document or voice messages. The
+     result's first message carries 💾 В заметки (`ResultCB`); a result that cannot be delivered
+     carries none.
    - **Cancel** *closes* the card.
    - **💾** takes the card's savable (a `notes_capture.Draft`), saves one Item, deletes the card
      and reacts on the Owner's original message; a failed save gives the savable back.
@@ -125,6 +129,18 @@ callbacks. If notes fails to start, the bot runs without it: direct messages get
 gets its card, and 💾 answers "Notes are unavailable". The `NotesCB` `offer` and `restore`
 handlers stay only for buttons on old Acknowledgement messages: 🤖 still works, ↩️ only removes
 itself (notes ADR-0010); `done` is current (Reminders, below).
+
+**A result put aside (notes ADR-0013).** 💾 under a delivered result (`result_save_handler`) makes that
+message a BotResult: `notes_capture.bot_result_of` reads the file facts off the message itself and the
+title and Workflow id from the job log (`db.job_title`; with no row, the file name or the caption's first
+line), and `notes.capture.capture` takes it as a `BotResult` payload. The Item is filed in «От бота»
+(`from_bot`, built in, never deleted, never the Classifier's choice) and has no Enrichment. The button
+goes away and 👌 lands on the bot's own message; a second press answers «Уже в заметках», and a
+partial unique index on the chat and message keeps it to one Item. A failed save keeps the button. A
+split audio result gets the button under part 1 once every part is sent, so its BotResult is part 1. The Owner may file a
+BotResult under other Sections too; `sections.refile` never takes it out of «От бота». «Открыть в
+чате» and a Reminder reply to the result message; with it gone, the show pass sends the file again
+by `file_id` (audio as a voice message, anything else as a document), or says the original is gone.
 
 **Reminders (notes ADR-0011).** An Item with a Due (`due_at`, UTC) is a Reminder.
 `NotesRuntime.start_reminder_loop` runs `remind_once` every 30 s: `reminders.claim_due` marks
@@ -253,8 +269,9 @@ These are lost on every restart, and a deploy is a restart:
   Drafts), and the live/closed marks.
 - The job queue.
 
-After a restart, old buttons answer "expired", and a job left running is marked `interrupted`
-at startup (`db.reconcile_running_jobs`). Notes enrichment survives, because the sweeper picks
+After a restart, old card buttons answer "expired", and a job left running is marked `interrupted`
+at startup (`db.reconcile_running_jobs`). 💾 under a delivered result keeps working: it reads the
+message it is on and the job log, nothing in memory. Notes enrichment survives, because the sweeper picks
 up anything left `pending` from sqlite.
 
 ## Touch points when you change…

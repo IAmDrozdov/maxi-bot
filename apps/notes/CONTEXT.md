@@ -12,7 +12,7 @@ The one person the bot answers and the Mini App serves.
 _Avoid_: user, admin, account
 
 **Item**:
-One saved thing — a Link, a Note, a File or a Voice.
+One saved thing — a Link, a Note, a File, a Voice or a BotResult.
 _Avoid_: entry, record, post, bookmark, запись
 
 **Link**:
@@ -31,8 +31,12 @@ _Avoid_: attachment, upload
 An Item that is speech sent to the bot — a voice message or a round video message; Telegram keeps the bytes, notes keep the `file_id` and its Transcript.
 _Avoid_: audio, recording, голосовуха
 
+**BotResult**:
+An Item that is something the bot made for the Owner — a document or audio a Workflow returned — put aside for later from the bot's own message; Telegram keeps the bytes, notes keep the `file_id` and that message. It has no Enrichment: what it is was known when it was made.
+_Avoid_: document, deliverable, output, File (a File is sent to the bot, not made by it)
+
 **Reminder**:
-Any Item, of any kind, that has a Due; removing the Due makes it a plain Item again. Not a fifth kind.
+Any Item, of any kind, that has a Due; removing the Due makes it a plain Item again. Not a kind of its own.
 _Avoid_: alarm, notification, task, напоминалка
 
 **Due**:
@@ -58,11 +62,13 @@ _Avoid_: note, comment, caption
 
 **Capture**:
 Sending the bot a message that becomes exactly one Item. In code: `notes.capture.capture` takes a *Text* (the Owner's words and the links hidden behind them) or an *Attachment* (a photo, video, document, voice or round video as Telegram describes it) with an *Origin* (the chat and message to acknowledge on, and the Sender), and answers with the Item, its Acknowledgement, its Due line and whether Enrichment starts.
+Putting a BotResult aside with the button under the bot's own message is a Capture too; the Item is that message.
 _Avoid_: save, ingest, submit, forward
 
 **Acknowledgement**:
 The bot's single reaction on the Owner's Capture message, saying whether to wait, nothing to do, or take a look; the bot leaves no message of its own, except the Due line a Notice asks for.
 Three states: *wait* (✍, Enrichment running), *saved* (👌, in notes, a duplicate included), *look* (👎: Capture failed, or Enrichment ended failed). In code `notes.capture.Acknowledgement`; the emoji are the bot's rendering.
+A BotResult's Acknowledgement goes on the bot's own message, and the button that Captured it goes away.
 _Avoid_: confirmation, receipt, card, reply, ack (in prose)
 
 **Section**:
@@ -72,6 +78,10 @@ _Avoid_: tag, folder, category, label, list, cluster
 **Other**:
 The built-in Section that cannot be deleted and holds every Item that would otherwise have no Section.
 _Avoid_: misc, uncategorised, inbox, unsorted
+
+**From the bot**:
+The built-in Section («От бота») that cannot be deleted and holds every BotResult and nothing else. A BotResult never leaves it, though the Owner may file it under other Sections as well; the Classifier never files into it.
+_Avoid_: documents, results, saved, inbox
 
 **Filing**:
 The set of Sections an Item is in; assigned by the Classifier at Capture, changed by the Owner afterwards.

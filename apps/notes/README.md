@@ -2,10 +2,11 @@
 
 The Owner's "save for later" store: links, text, files and voice messages sent to the Telegram bot
 are saved at once, enriched (title, author, caption, thumbnail, a voice's transcript), filed into Sections with a Russian Gist, and sorted
-in the Mini App (ADR-016). Merged in from the standalone `maxi-notes` repo (ADR-015).
+in the Mini App (ADR-016). A result the bot delivered (a translated document, audio) is put aside with 💾 under
+it: a BotResult, kept in the built-in Section «От бота» with no Enrichment (ADR-0013). Merged in from the standalone `maxi-notes` repo (ADR-015).
 
 - Vocabulary: `CONTEXT.md` (separate from the repo glossary: **Source** means something else here)
-- Decisions: `docs/decisions/0001–0012` · Spec: `docs/spec.md` · Tickets: `docs/tickets/`
+- Decisions: `docs/decisions/0001–0013` · Spec: `docs/spec.md` · Tickets: `docs/tickets/`
 
 ## Layout
 
@@ -13,7 +14,7 @@ in the Mini App (ADR-016). Merged in from the standalone `maxi-notes` repo (ADR-
 |---|---|
 | `apps/notes/src/notes/` | domain (`domain/`: items, sections, `clock`, `lists`, `reminders`, dashboard), `capture.py` (one message in, one Item out), sqlite store (`db.py`), Enrichment (`enrich/`), Classifier port (`classify/`), `sweeper.py`, `smoke.py` |
 | `interfaces/telegram_bot/…/handlers/documents.py` | a single website link gets a card with 💾 (`link_handler`, a savable Path) |
-| `interfaces/telegram_bot/…/handlers/notes.py` | the Capture Paths (text, file, voice), 💾 on a card, Reminder buttons; 🤖 and ↩️ only for buttons on old messages |
+| `interfaces/telegram_bot/…/handlers/notes.py` | the Capture Paths (text, file, voice), 💾 on a card and under a delivered result, Reminder buttons; 🤖 and ↩️ only for buttons on old messages |
 | `interfaces/telegram_bot/…/notes_capture.py` | the bot's Capture adapter: message → `notes.capture.capture` → reaction, Due line, background Enrichment |
 | `interfaces/telegram_bot/…/notes_runtime.py` | `NotesRuntime`: the Database, Classifier and the background loops (enrichment, sweeper, show, reminders) |
 | `interfaces/telegram_bot/…/notes_ui.py` | Acknowledgement reactions (✍ 👌 👎), "show in chat" and Reminders (the Due line, the reminder) |
