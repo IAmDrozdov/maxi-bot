@@ -16,6 +16,7 @@ from shared.obs import get_logger
 from . import db
 from .access import AccessMiddleware
 from .cards import CardBook, LiveIntake
+from .diary_runtime import build_runtime as build_diary_runtime
 from .handlers import setup_routers
 from .notes_runtime import build_runtime as build_notes_runtime
 from .tracing import init_tracing
@@ -73,6 +74,15 @@ async def _run() -> None:
         log.exception("notes disabled: could not start the notes store")
         notes = None
     dp["notes"] = notes
+    # The Nudge needs the Zone that notes keeps; without notes, or without the diary store, it stays off.
+    diary = None
+    if notes is not None:
+        try:
+            diary = build_diary_runtime(notes.db, owner)
+        except Exception:
+            log.exception("diary nudge disabled: could not open the diary store")
+    else:
+        log.warning("diary nudge disabled: notes did not start, so the Owner's Zone is unknown")
     dp.update.outer_middleware(AccessMiddleware())
     setup_routers(dp)
 
@@ -92,6 +102,10 @@ async def _run() -> None:
             notes.start_show_loop(bot)
             notes.start_reminder_loop(bot)
             notes.start_thumb_backfill()
+        if diary is not None:
+            nudge = asyncio.create_task(diary.nudge_loop(bot))
+            background.add(nudge)
+            nudge.add_done_callback(background.discard)
 
     dp.startup.register(on_startup)
     await dp.start_polling(bot)

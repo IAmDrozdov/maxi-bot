@@ -6,7 +6,7 @@ import re
 import sqlite3
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal, get_args
 
 from diary.db import Database
@@ -18,6 +18,7 @@ MARKS: tuple[Mark, ...] = get_args(Mark)
 MAX_TEXT = 120
 FIRST_YEAR, LAST_YEAR = 1970, 2100  # a Day outside is refused, so window arithmetic never overflows
 TOP_SUGGESTIONS = 5
+NUDGE_HOUR = 22  # the Owner's local hour from which an untouched Day is nudged, until midnight
 _DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
@@ -192,6 +193,40 @@ def raise_entry(db: Database, entry_id: int) -> Entry | None:
 def lower_entry(db: Database, entry_id: int) -> Entry | None:
     """One Level down; DiaryError at day."""
     return _step(db, entry_id, -1)
+
+
+# --- nudge -----------------------------------------------------------------------------------
+
+
+def nudge_day(local_now: datetime) -> date | None:
+    """The Day a Nudge may go out for at this local moment: today from NUDGE_HOUR on, else None."""
+    return local_now.date() if local_now.hour >= NUDGE_HOUR else None
+
+
+def claim_nudge(db: Database, day: date) -> bool:
+    """Marks the Day nudged if it is untouched (no Entry, no Mark) and not nudged yet; True: send it."""
+    key = day.isoformat()
+    with db.session() as conn:
+        cursor = conn.execute(
+            "INSERT INTO nudges(day) SELECT ? "
+            "WHERE NOT EXISTS (SELECT 1 FROM entries WHERE day=?) "
+            "AND NOT EXISTS (SELECT 1 FROM marks WHERE day=?) "
+            "ON CONFLICT(day) DO NOTHING",
+            (key, key, key),
+        )
+        return cursor.rowcount == 1
+
+
+def release_nudge(db: Database, day: date) -> None:
+    """Hand a claimed Nudge back when sending it failed for a reason worth retrying."""
+    with db.session() as conn:
+        conn.execute("DELETE FROM nudges WHERE day=?", (day.isoformat(),))
+
+
+def keep_nudge_message(db: Database, day: date, message_id: int) -> None:
+    """Remember which chat message carried the Day's Nudge."""
+    with db.session() as conn:
+        conn.execute("UPDATE nudges SET tg_message_id=? WHERE day=?", (message_id, day.isoformat()))
 
 
 # --- reads -----------------------------------------------------------------------------------

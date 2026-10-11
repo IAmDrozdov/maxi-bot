@@ -38,3 +38,7 @@ _Avoid_: overview, stats, обзор
 **Summary**:
 The Entries raised to a window's Level: a Week's Summary holds its Entries at week Level or higher, and so on up. Not a separate text: editing or deleting an Entry changes every Summary it sits in.
 _Avoid_: digest, recap, highlights, итоги (in code)
+
+**Nudge**:
+The bot's evening message to the Owner when today's Day is still untouched: no Entry and no Mark. A Mark alone holds it back, though it does not count for the Streak. Not a notes Reminder: it has no Due and nothing to close.
+_Avoid_: reminder, напоминание, напоминалка, notification, alarm

@@ -87,7 +87,8 @@ apps/diary/
 └── src/diary/          domain.py (every diary rule), db.py
 ```
 
-The diary (ADR-020) has no chat side: only `telegram_bot/miniapp/api_diary.py` reaches it.
+The diary's (ADR-020) chat side is the Nudge only (`telegram_bot/diary_runtime.py`, `diary_ui.py`); Entries
+and Marks are written only through `telegram_bot/miniapp/api_diary.py`.
 
 Its interfaces follow the same thin-adapter rule: `telegram_bot/handlers/notes.py` and
 `notes_ui.py` parse and render, `telegram_bot/miniapp` serves the Mini App (ADR-016). The Owner's single

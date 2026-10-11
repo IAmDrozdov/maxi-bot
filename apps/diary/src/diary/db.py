@@ -22,6 +22,12 @@ CREATE TABLE IF NOT EXISTS marks (
     day  TEXT PRIMARY KEY,
     mark TEXT NOT NULL CHECK (mark IN ('dead', 'meh', 'fire'))
 );
+
+CREATE TABLE IF NOT EXISTS nudges (
+    day           TEXT PRIMARY KEY,
+    sent_at       TEXT NOT NULL DEFAULT (datetime('now')),
+    tg_message_id INTEGER
+);
 """
 
 

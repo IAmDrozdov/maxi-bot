@@ -9,8 +9,8 @@ the notes path or the deploy. Shorthand: `telegram_bot/x.py` and `handlers/x.py`
 
 | Service | Entry point | Does | Reads / writes |
 |---|---|---|---|
-| `bot` | `telegram-bot` (`telegram_bot/__main__.py`) | Telegram long polling. Answers the Owner, prices cards, runs one job at a time (`worker.worker_loop`), and runs notes enrichment plus the notes sweeper, show loop, reminder loop and, once per start, the Thumbnail backfill | `telegram_bot.sqlite3` rw, `notes.sqlite3` rw, OpenAI, YouTube, the web |
-| `miniapp` | `telegram-miniapp` (`telegram_bot/miniapp`) | The Mini App: a public static shell plus a signed JSON API for notes, the diary and usage, `127.0.0.1:8083` (ADR-016, ADR-020, ADR-021) | `telegram_bot.sqlite3` read, `notes.sqlite3` rw, `diary.sqlite3` rw (the only process that opens it) |
+| `bot` | `telegram-bot` (`telegram_bot/__main__.py`) | Telegram long polling. Answers the Owner, prices cards, runs one job at a time (`worker.worker_loop`), and runs notes enrichment plus the notes sweeper, show loop, reminder loop and, once per start, the Thumbnail backfill, and the diary Nudge loop | `telegram_bot.sqlite3` rw, `notes.sqlite3` rw, `diary.sqlite3` rw (the `nudges` table only), OpenAI, YouTube, the web |
+| `miniapp` | `telegram-miniapp` (`telegram_bot/miniapp`) | The Mini App: a public static shell plus a signed JSON API for notes, the diary and usage, `127.0.0.1:8083` (ADR-016, ADR-020, ADR-021) | `telegram_bot.sqlite3` read, `notes.sqlite3` rw, `diary.sqlite3` rw (the only process that writes Entries and Marks) |
 | `funnel` (profile) | `tailscale/tailscale` | Publishes `miniapp` over HTTPS through Tailscale Funnel, outbound only (ADR-016) | `tsstate` volume |
 | `warp` (profile) | wireproxy | SOCKS5 egress for yt-dlp only (ADR-014) | — |
 | — | `smoke`, `notes-smoke` | Terminal-only reference runs (ADR-001) | local files |
@@ -102,12 +102,12 @@ card book. Both reach `notes.capture.capture` (a `Text` or an `Attachment` with 
 Item per Capture, `capture_link` with dedupe for exactly one URL, else a Note with the whole text,
 a File or a Voice. `notes_capture.settle` then shows what the Capture decided (the Due line, the
 reaction) and `NotesRuntime.enrich_later` (`telegram_bot/notes_runtime.py`) starts
-`notes.enrich.pipeline.enrich_item`. The bot sends no message of its own (a Reminder is the exception): the Acknowledgement
+`notes.enrich.pipeline.enrich_item`. The bot sends no message of its own (a Reminder and the diary Nudge are the exceptions): the Acknowledgement
 is its one reaction on the Owner's message (`notes_ui.react`): ✍ working, 👌 in notes, 👎 take a
 look (notes ADR-0009). A duplicate gets 👌 at once with no Enrichment (👎 if its Enrichment had
 failed), and keeps its Status, `done` included, unless its own words ask for a reminder (below). A
-Capture that throws, or notes being down, gets 👎. The bot writes a message for Reminders only
-(notes ADR-0011, below). Enrichment:
+Capture that throws, or notes being down, gets 👎. The bot writes a message of its own only for Reminders
+(notes ADR-0011, below) and for the diary Nudge (ADR-020 amended, «Дневник» below). Enrichment:
 
 1. The provider fetch runs through the SSRF guard: YouTube and TikTok oEmbed, the Instagram
    captioned embed page, or a generic page. A Voice is downloaded from Telegram instead (the bot
@@ -170,7 +170,8 @@ Section form, the diary's Week, Day, Month and Year, Расходы) has no titl
 returns, and a client below Bot API 6.1 gets «← Назад» from the shell. The app remembers the last Place, each
 Place's Mode, the selected Section and whether the Section rail is shown (`nav_v1`, kept next to the
 snapshots; a 401 or 403 wipes both). A launch opens what is remembered, «Заметки · записи» the first time;
-`📅 Перенести` (`?item=<id>`) opens that Item over the notes list whatever is remembered.
+`📅 Перенести` (`?item=<id>`) opens that Item over the notes list whatever is remembered, and the diary
+Nudge's `✍️ Записать` (`?place=diary`) opens «Дневник · записи» the same way; neither writes the memory.
 
 Funnel costs 250–450 ms a request, so the app is built to need few requests (ADR-019):
 - **Shell and assets.** The shell `/` is revalidated on every launch (ETag = a hash of the shell). Assets live
@@ -229,6 +230,17 @@ calling the domain.
   Entry, Streak, 🔥 Days), the most repeated Entry and the best Month; ‹ › change the Year. A Day on the
   map opens «записи» with that Day's Week on top.
 
+**Nudge (ADR-020, amended 2026-10-11).** The one thing the `bot` process does with the diary.
+`DiaryRuntime.nudge_loop` (`telegram_bot/diary_runtime.py`) runs `nudge_once` every 60 s: the Owner's Zone
+comes from notes (`clock.owner_zone`), `domain.nudge_day` answers today's Day from 22:00 local until
+midnight, and `domain.claim_nudge` writes the Day into `nudges` only if it has no Entry and no Mark and was
+not nudged yet, in one `INSERT … SELECT`, so a Day gets at most one Nudge whatever restarts in between. The bot then
+sends the Owner «📔 Сегодня в дневнике пусто» with `✍️ Записать` (`diary_ui.send_nudge`, a web_app to
+`/?place=diary`; no button without `BOT_MINIAPP_URL`). A network error hands the claim back for the next
+pass (`domain.release_nudge`); a lasting Bot API refusal keeps it. Nothing follows the Nudge: no repeat, no
+edit when an Entry appears. The Nudge is off when notes did not start (no Zone) or the diary store cannot
+be opened (`diary nudge disabled` in the log); the rest of the bot runs on.
+
 «⚙️ Расходы» in the place menu opens Расходы (`/api/usage`) as a nested screen; Telegram's back button
 returns to the Place and Mode left.
 
@@ -286,8 +298,8 @@ up anything left `pending` from sqlite.
     (`OWNER_TELEGRAM_ID`, `LOG_LEVEL` and the derived `MINIAPP_INIT_SECRET`) and `funnel.env`
     (`TS_AUTHKEY`). A variable the Mini App needs goes into the first;
   - the README tables.
-  Compose `environment:` overrides `bot.env`. `DIARY_DB_PATH` is set only there, for `miniapp`: the bot
-  never opens the diary, so it is not in `bot.env`.
+  Compose `environment:` overrides `bot.env`. `DIARY_DB_PATH` is set only there, for `bot` (the Nudge)
+  and `miniapp`, so it is not in `bot.env`.
 - **A service or workspace package:**
   - the manifests stage in `infrastructure/docker/Dockerfile` (one `COPY <pkg>/pyproject.toml`
     per member);

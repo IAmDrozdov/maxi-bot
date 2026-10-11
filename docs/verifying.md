@@ -81,7 +81,8 @@ On the screen (the 🧪 seed): a first launch reads «Заметки · запи
 Section's rows; the place menu reaches both Modes of both Places and «⚙️ Расходы» in two clicks; a reload
 reopens the Place, Mode and Section left and keeps the rail hidden if it was; a launch on the diary still
 stores the zone; a Section bar and «просрочено» on the notes Dashboard open «записи» on that Section;
-`/?item=<id>` opens that Item whatever is remembered. In a row, «⋮», a right click and a long press open
+`/?item=<id>` opens that Item whatever is remembered, and `/?place=diary` opens «Дневник · записи»; a plain
+launch after either still opens what was remembered. In a row, «⋮», a right click and a long press open
 the same menu; «✓ Готово» there, or a swipe to the left, takes the row away at once, sends one `PATCH` and
 offers «↩ Вернуть» for 4 s; «✓» on the rail shows the «Готово» list. On the Item view the main button closes
 the Item and returns to the list. «Дневник · записи» opens on today's editor with five suggestion chips;
@@ -163,6 +164,10 @@ dp.update.outer_middleware(AccessMiddleware()); setup_routers(dp)
   asserts on the recorded replies; `reminders.claim_due(db, now=...)` and a stub `notify(notice)`
   check the claim and the Due line without a bot. `notes-smoke --now "YYYY-MM-DD HH:MM" --zone <IANA>` runs the real
   Classifier on a phrasing and prints the Due.
+- **Nudge (ADR-020, amended):** `DiaryRuntime.nudge_once(bot, now)` takes the clock (an aware moment), so a
+  harness over throwaway diary and notes stores drives the pass at any hour and asserts on the recorded
+  message and its web_app button; set a non-UTC Zone first with `clock.remember_zone(notes_db, …)`.
+  `domain.claim_nudge(db, day)` and `domain.nudge_day(local_now)` check the claim and the window without a bot.
 
 ## 4. Production, after `deploy.sh` (free)
 

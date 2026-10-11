@@ -12,7 +12,7 @@ DATABASES = (
     ("notes.sqlite3", "NOTES_DB_PATH", "data/notes.sqlite3"),
     ("telegram_bot.sqlite3", "TELEGRAM_DB_PATH", "data/telegram_bot.sqlite3"),
 )
-# Optional: skipped while missing. The bot container has no DIARY_DB_PATH; the diary sits beside notes.
+# Optional: skipped while missing. Found beside notes, whatever DIARY_DB_PATH says.
 OPTIONAL = ("diary.sqlite3",)
 MAX_BYTES = 100 * 2**20  # the copy is held in memory, inside the bot container's 700 MB cap
 

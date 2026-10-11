@@ -3,7 +3,7 @@
 Map. Follow links. No rule duplication here. Humans start at `README.md`.
 
 ## What this is
-Monorepo of local AI workflows exposed through one job contract (`shared.job`, ADR-012) by a private Telegram bot that answers one Owner and nobody else (ADR-022) and a terminal smoke runner, plus two stateful apps — `apps/notes`, the Owner's save-for-later store (ADR-015), and `apps/diary`, the Owner's diary, reached only from the Mini App (ADR-020). New interfaces are thin adapters holding a registry of workflow descriptors. No automated tests (ADR-001).
+Monorepo of local AI workflows exposed through one job contract (`shared.job`, ADR-012) by a private Telegram bot that answers one Owner and nobody else (ADR-022) and a terminal smoke runner, plus two stateful apps — `apps/notes`, the Owner's save-for-later store (ADR-015), and `apps/diary`, the Owner's diary, written only from the Mini App; the bot sends its evening Nudge (ADR-020). New interfaces are thin adapters holding a registry of workflow descriptors. No automated tests (ADR-001).
 
 ## Docs, read by task
 - Any bot, notes or deploy work: `docs/runtime.md` first (what runs, how the parts talk, in-memory state, touch points).

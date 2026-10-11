@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     notes_classifier_provider: str = "fake"  # fake | openai
     notes_classifier_model: str = ""  # empty = shared.pricing.DEFAULT_TRANSLATE_MODEL
 
-    # Diary (apps/diary, ADR-020): only the Mini App reads and writes it.
+    # Diary (apps/diary, ADR-020): the Mini App writes Entries and Marks; the bot keeps the Nudge claim.
     diary_db_path: str = "data/diary.sqlite3"
 
     # Mini App (ADR-016): its public HTTPS URL; empty = no menu button, no ✏️ button.

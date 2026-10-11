@@ -1,6 +1,6 @@
 # ADR-020: A diary app, and a Dashboard inside each Mini App tab
 
-Status: Accepted (2026-10-08). Amends ADR-016 (decision 1: what the Mini App holds) and ADR-015 (a second app). Decision 4 superseded by ADR-021 (place and mode navigation).
+Status: Accepted (2026-10-08). Amends ADR-016 (decision 1: what the Mini App holds) and ADR-015 (a second app). Decision 4 superseded by ADR-021 (place and mode navigation). Amended 2026-10-11: the bot reaches the diary for the Nudge (below).
 
 ## Context
 
@@ -26,6 +26,23 @@ described only notes. A second app makes «the Dashboard» ambiguous. Vocabulary
    stays big enough to tap on a phone), then counts (Entries, Days with
    an Entry, the current Streak, 🔥 Days), the most repeated Entry and the best Month (most 🔥
    Days, then most Entries).
+
+## Amendment (2026-10-11): the Nudge
+
+Decision 1 said the diary is reached only from the Mini App. The bot now reaches it for one thing, the
+Nudge (`apps/diary/CONTEXT.md`). From 22:00 to midnight in the Owner's Zone, once per Day, the `bot`
+process checks whether today's Day is untouched (no Entry and no Mark) and, if so, sends the Owner
+«📔 Сегодня в дневнике пусто» with «✍️ Записать», a web_app button to `/?place=diary`. The check and the
+claim are one statement on `diary.sqlite3` (table `nudges`); a send that fails for a network reason hands
+the claim back, so a restart never sends a second Nudge, and a bot that was down at 22:00 sends when it
+is back (a process killed in the instant between the claim and the send loses that Day's Nudge, as a
+Reminder's claim would). Entries and Marks are still written only from the Mini App, and every text sent to the bot is
+still a notes Capture.
+
+Rejected: a notes Item with a Due each evening (it would sit in the notes lists, the Overdue count and
+the Dashboard, and ✅ Готово would not mean an Entry was written); sending from `miniapp` (a second sender
+of chat messages with its own retry); an hour or a switch in ⚙️ or in the environment (one Owner, one
+hour; the claim does not depend on where the hour comes from); a repeat, or tidying earlier Nudges.
 
 ## Considered and rejected
 

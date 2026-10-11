@@ -161,11 +161,15 @@ async function boot() {
 
   await loadStored(); // the last launch's answers and where the Owner was: the first view paints from them
 
-  // The 📅 Перенести button in the chat launches the app with ?item=<id>: that Item over the list, whatever is remembered.
-  const item = new URLSearchParams(location.search).get("item");
+  // Two chat buttons launch the app on a fixed screen, whatever is remembered: 📅 Перенести with ?item=<id>
+  // (that Item over the list) and the diary Nudge's ✍️ Записать with ?place=diary (today's Day).
+  const params = new URLSearchParams(location.search);
+  const item = params.get("item");
   const asked = item && /^\d+$/.test(item);
-  const place = !asked && PLACES.some((p) => p.id === prefs().place) ? prefs().place : PLACES[0].id;
-  const mode = asked ? MODES[0].id : modeOf(place);
+  const toDiary = !asked && params.get("place") === "diary";
+  const kept = PLACES.some((p) => p.id === prefs().place) ? prefs().place : PLACES[0].id;
+  const place = asked ? PLACES[0].id : toDiary ? "diary" : kept;
+  const mode = asked || toDiary ? MODES[0].id : modeOf(place);
   if (!(place === "notes" && mode === "board")) reportZone(); // the notes Dashboard tells the server the zone itself
   paintBar(entryOf(place, mode)); // the title row stands before the first answer: a slow link still shows where this is
   setBack(null);
