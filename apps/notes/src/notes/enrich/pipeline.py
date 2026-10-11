@@ -37,6 +37,8 @@ def build_request(
     transcript: str | None = None,
     zone_name: str = "UTC",
 ) -> FilingRequest:
+    if item.kind == "bot_result":  # it has no Enrichment (ADR-0013)
+        raise ValueError("a BotResult is never filed by the Classifier")
     return FilingRequest(
         kind=item.kind,
         url=item.url,
@@ -170,7 +172,8 @@ async def _enrich_item(
             await asyncio.to_thread(thumbnail.save, db, item.id, image[0])
         except Exception:  # a Thumbnail is optional: never let it hold up the Filing
             log.exception("item %s: could not keep its thumbnail", item.id)
-    known = await asyncio.to_thread(sections.list_sections, db)
+    listed = await asyncio.to_thread(sections.list_sections, db)
+    known = [s for s in listed if s.slug != sections.FROM_BOT_SLUG]  # BotResults only (ADR-0013)
     zone_name = await asyncio.to_thread(clock.owner_zone, db)
     request = build_request(item, fetched, known, image, transcript, zone_name)
     filing: Filing | None = None

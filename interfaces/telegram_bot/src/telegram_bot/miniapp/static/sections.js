@@ -1,7 +1,7 @@
-// The Section form: create, edit, delete (Other cannot be deleted, ADR-0002).
+// The Section form: create, edit, delete (Other and From the bot cannot be deleted, ADR-0002 and ADR-0013).
 
 import { api, attempt, confirmAction, el, haptic, setBack, toast } from "./core.js";
-import { OTHER } from "./cards.js";
+import { FROM_BOT, OTHER } from "./cards.js";
 
 const DEFAULT_COLOR = "#8a8a8a";
 
@@ -61,17 +61,22 @@ export function openSectionForm({ list, host, section, saved, closed }) {
   // The server counts characters; this is only a loose bound (UTF-16 units overcount emoji).
   const emoji = labelled(box, "Эмодзи", "text", section?.emoji ?? "", { name: "emoji", maxLength: 32 });
   const color = labelled(box, "Цвет", "color", section?.color ?? DEFAULT_COLOR, { name: "color" });
-  const hint = labelled(box, "Подсказка для разбора: что сюда относится", "textarea", section?.hint ?? "", {
-    name: "hint",
-    maxLength: 500,
-    rows: 3,
-  });
-  hint.oninput = () => fitHeight(hint);
+  // The Classifier never files into From the bot, so that Section has no hint to give it.
+  const fromBot = section?.slug === FROM_BOT;
+  const hint = fromBot
+    ? null
+    : labelled(box, "Подсказка для разбора: что сюда относится", "textarea", section?.hint ?? "", {
+        name: "hint",
+        maxLength: 500,
+        rows: 3,
+      });
+  if (hint) hint.oninput = () => fitHeight(hint);
 
   const actions = el("div", "actions");
   const save = el("button", "btn", "Сохранить");
   save.onclick = async () => {
-    const body = { name: name.value, emoji: emoji.value, color: color.value, hint: hint.value };
+    const body = { name: name.value, emoji: emoji.value, color: color.value };
+    if (hint) body.hint = hint.value;
     const done = await act(() =>
       section
         ? api(`/notes/sections/${section.id}`, { method: "PATCH", body })
@@ -85,7 +90,7 @@ export function openSectionForm({ list, host, section, saved, closed }) {
   };
   actions.append(save);
 
-  if (section && section.slug !== OTHER) {
+  if (section && section.slug !== OTHER && !fromBot) {
     const remove = el("button", "btn danger", "Удалить");
     remove.onclick = async () => {
       const question = `Удалить секцию «${section.name}»? Заметки, у которых она единственная, уйдут в «Остальное».`;
@@ -101,14 +106,17 @@ export function openSectionForm({ list, host, section, saved, closed }) {
     };
     actions.append(remove);
   } else if (section) {
-    box.append(el("div", "hint", "Сюда попадает всё, что не подошло другим секциям, поэтому её нельзя удалить."));
+    const why = fromBot
+      ? "Здесь лежат результаты бота, которые ты отложил, поэтому её нельзя удалить."
+      : "Сюда попадает всё, что не подошло другим секциям, поэтому её нельзя удалить.";
+    box.append(el("div", "hint", why));
   }
   box.append(actions);
 
   host.replaceChildren(box);
   list.hidden = true;
   host.hidden = false;
-  fitHeight(hint);
+  if (hint) fitHeight(hint);
   setBack(close);
   window.scrollTo(0, 0);
   return { close };

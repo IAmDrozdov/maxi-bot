@@ -20,6 +20,7 @@ import {
   toast,
 } from "./core.js";
 import {
+  FROM_BOT,
   OTHER,
   enrichmentBadge,
   externalLink,
@@ -171,6 +172,7 @@ export function openDetail({ list, host, item, fresh = false, focus = null, ...h
     const sectionRow = el("div", "chip-row");
     const sectionButtons = new Map();
     for (const section of hooks.sections) {
+      if (section.slug === FROM_BOT && state.detail.kind !== "bot_result") continue;
       const chip = el("button", "chip filter", sectionLabel(section));
       chip.style.setProperty("--chip", section.color);
       chip.onclick = () => (state.sectionsOpen ? toggleSection(section.slug) : showSections(true));

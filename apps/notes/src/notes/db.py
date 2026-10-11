@@ -14,7 +14,8 @@ log = get_logger(__name__)
 ITEMS_DDL = """
 CREATE TABLE IF NOT EXISTS {name} (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    kind                TEXT NOT NULL CHECK (kind IN ('link', 'note', 'file', 'voice')),
+    kind                TEXT NOT NULL
+                        CHECK (kind IN ('link', 'note', 'file', 'voice', 'bot_result')),
     url                 TEXT,
     url_normalized      TEXT,
     text                TEXT NOT NULL DEFAULT '',
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS {name} (
     file_size           INTEGER,
     duration_s          INTEGER,
     transcript          TEXT,
+    workflow            TEXT,
     sender              TEXT,
     status              TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'done')),
     done_at             TEXT,
@@ -110,6 +112,7 @@ def _rebuild_items(conn: sqlite3.Connection, select: Mapping[str, str] | None = 
     """Rebuild `items` to the current DDL (SQLite cannot alter a CHECK), copying shared columns."""
     select = select or {}
     old = set(_columns(conn, "items"))
+    last_id = conn.execute("SELECT seq FROM sqlite_sequence WHERE name='items'").fetchone()
     conn.commit()
     conn.execute("PRAGMA foreign_keys=OFF")  # a no-op inside a transaction; DROP must not cascade
     try:
@@ -120,6 +123,11 @@ def _rebuild_items(conn: sqlite3.Connection, select: Mapping[str, str] | None = 
         conn.execute(f"INSERT INTO items_new({', '.join(columns)}) SELECT {sources} FROM items")
         conn.execute("DROP TABLE items")
         conn.execute("ALTER TABLE items_new RENAME TO items")
+        if last_id:  # the copy counts from the highest id left: a deleted Item's id stays retired
+            conn.execute("DELETE FROM sqlite_sequence WHERE name='items'")
+            conn.execute(
+                "INSERT INTO sqlite_sequence(name, seq) VALUES ('items', ?)", (last_id[0],)
+            )
         if conn.execute("PRAGMA foreign_key_check").fetchall():
             raise sqlite3.IntegrityError("items migration left dangling references")
         conn.commit()
@@ -133,7 +141,7 @@ def _rebuild_items(conn: sqlite3.Connection, select: Mapping[str, str] | None = 
 
 
 def _migrate_items(conn: sqlite3.Connection) -> None:
-    """Bring an older `items` to the current shape: one Status (ADR-0010), a Due (ADR-0011)."""
+    """Bring an older `items` to the current shape: Status (ADR-0010), Due (ADR-0011), BotResult (ADR-0013)."""
     select: dict[str, str] = {}
     if "placement" in _columns(conn, "items"):
         # Foreign keys are still on here, so a trashed Item takes its Filing and preview with it.
@@ -185,7 +193,7 @@ class Database:
         with self.session() as conn:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.executescript(ITEMS_DDL.format(name="items"))
-            if "due_at" not in _items_sql(conn):
+            if "'bot_result'" not in _items_sql(conn):  # the newest thing a rebuild adds
                 _migrate_items(conn)
             conn.executescript(SCHEMA)
             filled = conn.execute(

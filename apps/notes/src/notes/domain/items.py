@@ -22,7 +22,7 @@ from notes.domain.sections import (
 )
 from notes.domain.urls import normalize_url
 
-Kind = Literal["link", "note", "file", "voice"]
+Kind = Literal["link", "note", "file", "voice", "bot_result"]
 Status = Literal["todo", "done"]
 EnrichmentStatus = Literal["pending", "done", "failed", "skipped"]
 CaptureOutcome = Literal["new", "existing"]

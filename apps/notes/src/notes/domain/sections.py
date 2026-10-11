@@ -1,4 +1,4 @@
-"""Sections: the categories Items are filed under. Other always exists (ADR-0002)."""
+"""Sections: the categories Items are filed under. Other (ADR-0002) and From the bot (ADR-0013) always exist."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from shared.obs import get_logger
 log = get_logger(__name__)
 
 OTHER_SLUG = "other"
+FROM_BOT_SLUG = "from_bot"  # slugify never makes an underscore, so the Owner cannot take it
 NAME_MAX = 40
 EMOJI_MAX = 8
 HINT_MAX = 500
@@ -97,6 +98,7 @@ STARTER_SECTIONS: tuple[tuple[str, str, str, str, str], ...] = (
         "сервиса или курса. Своя идея важнее темы ссылки. Если у проекта есть своя секция, клади "
         "туда, а не сюда.",
     ),
+    (FROM_BOT_SLUG, "От бота", "📑", "#4f8a8b", ""),  # no hint: the Classifier never sees it
     (
         OTHER_SLUG,
         "Остальное",
@@ -148,7 +150,8 @@ def _row_to_section(row: sqlite3.Row) -> Section:
 def seed_sections(db: Database) -> None:
     """Fill an empty store with the starter set; a starter the Owner deleted stays deleted.
 
-    Other is the one exception: it is put back (last) whenever it is missing, since Items need it.
+    Other and From the bot are the exceptions: each is put back whenever it is missing, Other last
+    and From the bot just before it.
     """
     refreshed = 0
     with db.session() as conn:
@@ -171,8 +174,26 @@ def seed_sections(db: Database) -> None:
                 "UPDATE sections SET hint=? WHERE slug=? AND is_builtin=1 AND hint=?",
                 (hint, slug, FORMER_HINTS.get(slug)),
             ).rowcount
+        if not conn.execute("SELECT 1 FROM sections WHERE slug=?", (FROM_BOT_SLUG,)).fetchone():
+            from_bot = next(s for s in STARTER_SECTIONS if s[0] == FROM_BOT_SLUG)
+            _insert_before_other(conn, from_bot, is_builtin=True)
     if refreshed:
         log.info("notes db: gave %d built-in sections the new starter hint", refreshed)
+
+
+def _insert_before_other(
+    conn: sqlite3.Connection, section: tuple[str, str, str, str, str], *, is_builtin: bool
+) -> int | None:
+    """Insert (slug, name, emoji, color, hint) where Other is, moving Other and the rest down one."""
+    other = conn.execute("SELECT position FROM sections WHERE slug=?", (OTHER_SLUG,)).fetchone()
+    position = int(other["position"])
+    conn.execute("UPDATE sections SET position = position + 1 WHERE position >= ?", (position,))
+    cur = conn.execute(
+        "INSERT INTO sections(slug, name, emoji, color, hint, is_builtin, position) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (*section, int(is_builtin), position),
+    )
+    return cur.lastrowid
 
 
 def list_sections(db: Database) -> list[Section]:
@@ -234,18 +255,11 @@ def create_section(
         twin = conn.execute("SELECT name FROM sections WHERE slug=?", (slug,)).fetchone()
         if twin:
             raise SectionError(f"Название слишком похоже на секцию «{twin['name']}»")
-        other = conn.execute("SELECT position FROM sections WHERE slug=?", (OTHER_SLUG,)).fetchone()
-        position = int(other["position"])
-        conn.execute("UPDATE sections SET position = position + 1 WHERE position >= ?", (position,))
         try:
-            cur = conn.execute(
-                "INSERT INTO sections(slug, name, emoji, color, hint, is_builtin, position) "
-                "VALUES (?, ?, ?, ?, ?, 0, ?)",
-                (slug, name, emoji, color, hint, position),
-            )
+            new_id = _insert_before_other(conn, (slug, name, emoji, color, hint), is_builtin=False)
         except sqlite3.IntegrityError as exc:  # a double tap created it a moment ago
             raise SectionError(f"Секция «{name}» уже есть") from exc
-        row = conn.execute("SELECT * FROM sections WHERE id=?", (cur.lastrowid,)).fetchone()
+        row = conn.execute("SELECT * FROM sections WHERE id=?", (new_id,)).fetchone()
         return _row_to_section(row)
 
 
@@ -294,13 +308,16 @@ def reorder_sections(db: Database, section_ids: Sequence[int]) -> list[Section]:
 
 
 def delete_section(db: Database, section_id: int) -> bool:
-    """Delete a Section; Items left with none go to Other. False if missing; Other is refused."""
+    """Delete a Section; Items left with none go to Other. False if missing.
+
+    Other and From the bot are refused.
+    """
     with db.session() as conn:
-        row = conn.execute("SELECT slug FROM sections WHERE id=?", (section_id,)).fetchone()
+        row = conn.execute("SELECT slug, name FROM sections WHERE id=?", (section_id,)).fetchone()
         if row is None:
             return False
-        if row["slug"] == OTHER_SLUG:
-            raise SectionError("«Остальное» удалить нельзя")
+        if row["slug"] in (OTHER_SLUG, FROM_BOT_SLUG):
+            raise SectionError(f"«{row['name']}» удалить нельзя")
         conn.execute(
             "INSERT INTO item_sections(item_id, section_id) "
             "SELECT item_id, ? FROM item_sections GROUP BY item_id "
@@ -330,7 +347,17 @@ def file_in_other(conn: sqlite3.Connection, item_id: int) -> None:
 
 
 def refile(conn: sqlite3.Connection, item_id: int, slugs: Sequence[str]) -> None:
-    """Replace the Filing: unknown slugs are dropped; an empty Filing falls back to Other (ADR-0002)."""
+    """Replace the Filing: unknown slugs are dropped; an empty Filing falls back to Other (ADR-0002).
+
+    From the bot holds every BotResult, which is never in Other, and no other Item (ADR-0013).
+    """
+    item = conn.execute("SELECT kind FROM items WHERE id=?", (item_id,)).fetchone()
+    if item is not None and item["kind"] == "bot_result":
+        slugs = [FROM_BOT_SLUG, *(s for s in slugs if s not in (FROM_BOT_SLUG, OTHER_SLUG))]
+    elif FROM_BOT_SLUG in slugs:
+        slugs = [s for s in slugs if s != FROM_BOT_SLUG]
+        if not slugs:  # named alone: the Item stays where it was
+            return
     rows = (
         conn.execute(
             f"SELECT id FROM sections WHERE slug IN ({','.join('?' * len(slugs))})", tuple(slugs)

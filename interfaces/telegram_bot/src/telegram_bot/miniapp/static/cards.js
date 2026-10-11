@@ -3,6 +3,7 @@
 import { apiImageUrl, el, openUrl, parseTs } from "./core.js";
 
 export const OTHER = "other";
+export const FROM_BOT = "from_bot"; // holds BotResults and nothing else (notes ADR-0013)
 export const OVERDUE = "__overdue"; // the slug of the «Просрочено» row, which is not a Section
 
 export const isHttp = (url) => /^https?:\/\//i.test(url || "");
