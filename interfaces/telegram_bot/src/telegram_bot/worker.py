@@ -120,17 +120,6 @@ class JobQueue:
             count += 1
         return count
 
-    def reserved_cost(self, user_id: int) -> float:
-        """Estimated spend a user has queued or running — not yet in the usage log."""
-        total = sum(
-            job.estimated_cost_usd
-            for job in self._items
-            if job.user_id == user_id and not job.cancelled
-        )
-        if self.current is not None and self.current.user_id == user_id:
-            total += self.current.estimated_cost_usd
-        return total
-
 
 def _fmt_cost(value: float) -> str:
     return f"${value:.4f}"

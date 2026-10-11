@@ -12,18 +12,16 @@ from aiogram.types import Message
 from notes.domain.urls import extract_urls
 from notes.enrich.providers import is_social_media, is_youtube
 
-from .access import is_admin
 from .catalog import ALLOWED_EXTENSIONS
 
 Media = Literal["none", "document", "photo_or_video", "voice", "other"]
 Kind = Literal[
-    "document_card",  # an agent document (.pdf .docx .md .markdown .txt), from anyone: card, never 💾
-    "unsupported_document",  # an invitee's other document: "Unsupported file type…" reply
-    "link_card",  # a link to price: card (the admin's single website link: with 💾)
-    "capture_text",  # the admin's text with no URL, several, or one Instagram/YouTube/TikTok URL
-    "capture_file",  # the admin's photo, video or non-agent document
-    "capture_voice",  # the admin's voice or round video
-    "ignore",  # everything else: an invitee's plain text or media, a command, a sticker…
+    "document_card",  # an agent document (.pdf .docx .md .markdown .txt): card, never 💾
+    "link_card",  # a link to price: card (a single website link: with 💾)
+    "capture_text",  # text with no URL, several, or one Instagram/YouTube/TikTok URL
+    "capture_file",  # a photo, video or non-agent document
+    "capture_voice",  # a voice or round video
+    "ignore",  # everything else: a command, an audio, a sticker…
 ]
 
 
@@ -31,7 +29,6 @@ Kind = Literal[
 class Incoming:
     """One message as routing reads it. Built once by `incoming_of`; plain values, no aiogram."""
 
-    from_admin: bool
     text: str  # text, or the caption of a named media kind, stripped ("" when neither)
     linked: tuple[str, ...] = ()  # URLs behind text (text_link entities), text or caption
     media: Media = "none"  # "other": audio, sticker, contact… (never routed)
@@ -42,7 +39,7 @@ class Incoming:
 class Path:
     kind: Kind
     url: str | None = None  # link_card only: the link the card prices
-    savable: bool = False  # link_card only: the admin's card offers 💾 (ADR-015 §4, notes ADR-0009)
+    savable: bool = False  # link_card only: the card offers 💾 (ADR-015 §4, notes ADR-0009)
 
 
 IGNORE = Path("ignore")
@@ -59,7 +56,6 @@ def _is_direct_host(url: str) -> bool:
 
 def incoming_of(message: Message) -> Incoming:
     """The only function here that touches aiogram; captions are read for named media kinds only."""
-    user = message.from_user
     media: Media
     if message.text is not None:
         media = "none"
@@ -78,7 +74,6 @@ def incoming_of(message: Message) -> Incoming:
     else:
         text, entities = message.caption or "", message.caption_entities or []
     return Incoming(
-        from_admin=user is not None and is_admin(user.id),
         text=text.strip(),
         linked=tuple(e.url for e in entities if e.type == "text_link" and e.url),
         media=media,
@@ -87,23 +82,23 @@ def incoming_of(message: Message) -> Incoming:
 
 
 def route(m: Incoming) -> Path:
-    """Total and pure: every Incoming gets exactly one Path; reproduces today's behaviour line by line."""
+    """Total and pure: every Incoming gets exactly one Path."""
     if m.media == "other":
         return IGNORE
     if m.media == "voice":
-        return Path("capture_voice") if m.from_admin else IGNORE
+        return Path("capture_voice")
     if m.media == "photo_or_video":
-        return Path("capture_file") if m.from_admin else IGNORE
+        return Path("capture_file")
     if m.media == "document":
         if is_agent_document(m.filename or "document"):
-            return Path("document_card")  # admin and invitee alike; never 💾
-        return Path("capture_file") if m.from_admin else Path("unsupported_document")
-    if m.from_admin and m.text and not m.text.startswith("/"):
+            return Path("document_card")  # never 💾
+        return Path("capture_file")
+    if m.text and not m.text.startswith("/"):
         urls = extract_urls(m.text, linked=m.linked).urls
         if len(urls) == 1 and not _is_direct_host(urls[0]):
             return Path("link_card", url=urls[0], savable=True)
         return Path("capture_text")
-    urls = extract_urls(m.text).urls  # an invitee's hidden links do not count (as today)
+    urls = extract_urls(m.text).urls  # a command's link: no 💾, and its hidden links do not count
     return Path("link_card", url=urls[0]) if urls else IGNORE
 
 

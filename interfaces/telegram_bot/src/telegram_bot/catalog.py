@@ -91,11 +91,9 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx", ".md", ".markdown", ".txt"}
 TG_DOWNLOAD_LIMIT = 20 * 1024 * 1024  # Bot API getFile cap
 TG_UPLOAD_LIMIT = 50 * 1024 * 1024  # Bot API send cap
 
-# Spend guards (BOT_* env). A 20 MB text document is ~20M characters, which is a
+# Spend guard (BOT_* env). A 20 MB text document is ~20M characters, which is a
 # three-figure TTS bill, so the priced card alone is not a sufficient brake.
 MAX_JOB_COST_USD = settings.bot_max_job_cost_usd
-DAILY_USER_COST_LIMIT_USD = settings.bot_daily_user_cost_limit_usd
-DAILY_COST_WINDOW_HOURS = 24  # fixed window; edit here for weekly
 
 
 def option_label(value: str) -> str:

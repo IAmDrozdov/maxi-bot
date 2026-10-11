@@ -56,7 +56,8 @@ async def _run() -> None:
         log.error("TELEGRAM_BOT_TOKEN is not set — refusing to start")
         sys.exit(1)
     if settings.admin_telegram_id is None:
-        log.warning("ADMIN_TELEGRAM_ID is not set — nobody can mint invites")
+        log.error("ADMIN_TELEGRAM_ID is not set — refusing to start")
+        sys.exit(1)
 
     db.init_db()
     if stale := db.reconcile_running_jobs():

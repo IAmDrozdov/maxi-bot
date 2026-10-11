@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import time
 from html import escape
 
 from aiogram import F, Router
@@ -16,11 +15,8 @@ from shared.audio import SpeechSpec, synthesize
 from shared.config import settings
 
 from .. import db, user_config
-from ..access import is_admin
 from ..cards import CardBook
 from ..catalog import (
-    DAILY_COST_WINDOW_HOURS,
-    DAILY_USER_COST_LIMIT_USD,
     DEFAULTS,
     OPTION_SETS,
     PREVIEW_KEYS,
@@ -161,11 +157,6 @@ async def set_value(callback: CallbackQuery, callback_data: SetCB) -> None:
 # Guards against a second "Test" tap while a synthesis is already running.
 _testing: set[tuple[int, int]] = set()
 
-# The test phrase is short, but with no record and no cooldown it was a free-standing
-# way to spend outside both caps (see the security review, M5).
-_TEST_COOLDOWN_S = 10
-_last_test: dict[int, float] = {}
-
 
 @router.callback_query(TryCB.filter())
 async def try_action(callback: CallbackQuery, callback_data: TryCB) -> None:
@@ -194,22 +185,6 @@ async def try_action(callback: CallbackQuery, callback_data: TryCB) -> None:
         return
 
     user = callback.from_user
-    if not is_admin(user.id):
-        now = time.monotonic()
-        if now - _last_test.get(user.id, 0.0) < _TEST_COOLDOWN_S:
-            await callback.answer("One test at a time — try again in a few seconds.")
-            return
-        # Unrecorded and unbounded before this check (see the security review, M5):
-        # each test costs real money and previously counted toward no cap at all.
-        spent = await asyncio.to_thread(db.user_cost_since, user.id, DAILY_COST_WINDOW_HOURS)
-        if spent >= DAILY_USER_COST_LIMIT_USD:
-            await callback.answer(
-                "You've hit your daily spend limit — try a test again tomorrow.",
-                show_alert=True,
-            )
-            return
-        _last_test[user.id] = now
-
     _testing.add(token)
     try:
         await callback.answer("Synthesizing…")

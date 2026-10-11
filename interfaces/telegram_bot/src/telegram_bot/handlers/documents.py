@@ -14,14 +14,8 @@ from shared.job import DocumentSource, Estimate
 from shared.obs import get_logger
 
 from .. import db, eta, routing
-from ..access import is_admin
 from ..cards import CardBook, fmt_cost
-from ..catalog import (
-    DAILY_COST_WINDOW_HOURS,
-    DAILY_USER_COST_LIMIT_USD,
-    MAX_JOB_COST_USD,
-    TG_DOWNLOAD_LIMIT,
-)
+from ..catalog import MAX_JOB_COST_USD, TG_DOWNLOAD_LIMIT
 from ..keyboards import JobCB, MenuCB, editable, root_menu
 from ..notes_capture import draft_of
 from ..registry import by_id
@@ -35,8 +29,8 @@ EXPIRED = "This job has expired — send the document again."
 UNAVAILABLE = "That action is unavailable for this document."
 
 
-async def _spend_block_reason(user_id: int, estimate: Estimate, reserved: float) -> str | None:
-    """Why this job must not run, or None; `reserved` is the user's queued + running estimate."""
+def _spend_block_reason(estimate: Estimate) -> str | None:
+    """Why this job must not run, or None."""
     cost = estimate.cost.total_usd
     if cost > MAX_JOB_COST_USD:
         return (
@@ -44,20 +38,10 @@ async def _spend_block_reason(user_id: int, estimate: Estimate, reserved: float)
             f"{fmt_cost(MAX_JOB_COST_USD)} per-job limit. Split the document and send it "
             "in parts."
         )
-    if is_admin(user_id):
-        return None
-    spent = await asyncio.to_thread(db.user_cost_since, user_id, DAILY_COST_WINDOW_HOURS)
-    if spent + reserved + cost > DAILY_USER_COST_LIMIT_USD:
-        queued = f" plus {fmt_cost(reserved)} queued" if reserved else ""
-        return (
-            f"You have spent {fmt_cost(spent)} in the last {DAILY_COST_WINDOW_HOURS}h{queued}, "
-            f"and this job adds {fmt_cost(cost)}, over the {fmt_cost(DAILY_USER_COST_LIMIT_USD)} "
-            "daily limit. Try again later or ask the owner."
-        )
     return None
 
 
-@router.message(routing.takes("document_card", "unsupported_document"))
+@router.message(routing.takes("document_card"))
 async def document_handler(message: Message, bot: Bot, path: routing.Path, cards: CardBook) -> None:
     document = message.document
     user = message.from_user
@@ -65,11 +49,6 @@ async def document_handler(message: Message, bot: Bot, path: routing.Path, cards
         return
 
     filename = document.file_name or "document"
-    if path.kind == "unsupported_document":
-        await message.answer(
-            "Unsupported file type. Send a .pdf, .docx, .md, .markdown or .txt document."
-        )
-        return
     if document.file_size and document.file_size > TG_DOWNLOAD_LIMIT:
         await message.answer(
             "Telegram bots can only download files up to 20 MB. Please send a smaller document."
@@ -96,7 +75,7 @@ async def document_handler(message: Message, bot: Bot, path: routing.Path, cards
 
 @router.message(routing.takes("link_card"))
 async def link_handler(message: Message, path: routing.Path, cards: CardBook) -> None:
-    """Anyone's link → card; the admin's single website link also offers 💾 (ADR-015 §4)."""
+    """A link → card; a single website link also offers 💾 (ADR-015 §4)."""
     user = message.from_user
     if user is None or path.url is None:
         return
@@ -140,7 +119,7 @@ async def run_job_handler(
         if estimate.error:
             await callback.answer(UNAVAILABLE, show_alert=True)
             return
-        if blocked := await _spend_block_reason(user.id, estimate, queue.reserved_cost(user.id)):
+        if blocked := _spend_block_reason(estimate):
             await callback.answer(blocked, show_alert=True)
             return
 

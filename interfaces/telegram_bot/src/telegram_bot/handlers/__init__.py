@@ -5,16 +5,14 @@ from __future__ import annotations
 from aiogram import Dispatcher
 
 from .. import access
-from . import admin, documents, notes, settings_menu, start, status
+from . import documents, notes, settings_menu, start, status
 
 
 def setup_routers(dp: Dispatcher) -> None:
-    dp.include_router(start.router)
-    # Defense in depth for H1: the middleware's only unauthenticated path is /start
-    # <payload>, but every other router gets its own access check too, so a regression
-    # in that one exception can never carry a stranger into a different handler.
+    # Defense in depth: the middleware already drops everyone else, and every router
+    # repeats the check, so a regression there cannot carry a stranger into a handler.
     for router in (
-        admin.router,
+        start.router,
         notes.router,
         documents.router,
         settings_menu.router,

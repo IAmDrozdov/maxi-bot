@@ -131,7 +131,7 @@ def seed_jobs(path: Path) -> None:
     """A few usage rows for the «Расходы» screen; the server has already created the schema."""
     rows = [
         (TEST_ADMIN_ID, "admin", "pdf_tts", "🧪 a.pdf", "ok", 0.12, f"-{n} days") for n in range(4)
-    ] + [(200, "invitee", "doc_translator", "🧪 b.docx", "ok", 0.31, "-1 days")]
+    ] + [(TEST_ADMIN_ID, "admin", "doc_translator", "🧪 b.docx", "ok", 0.31, "-1 days")]
     with sqlite3.connect(path) as conn:
         conn.executemany(
             "INSERT INTO jobs(telegram_id, username, agent, filename, status, cost_usd, created_at) "

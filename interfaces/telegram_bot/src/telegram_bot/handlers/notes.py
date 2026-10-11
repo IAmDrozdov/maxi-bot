@@ -14,9 +14,8 @@ from notes.domain import items
 from shared.obs import get_logger
 
 from .. import notes_capture, notes_ui, routing
-from ..access import is_admin
 from ..cards import CardBook
-from ..keyboards import JobCB
+from ..keyboards import JobCB, editable
 from ..notes_capture import Draft, draft_of, links_of
 from ..notes_runtime import NotesRuntime
 from ..notes_ui import NotesCB
@@ -67,17 +66,11 @@ async def voice_handler(
     await notes_capture.capture_message(notes, bot, message)
 
 
-def _admin_message(callback: CallbackQuery) -> Message | None:
-    if not is_admin(callback.from_user.id):
-        return None
-    return callback.message if isinstance(callback.message, Message) else None
-
-
 @router.callback_query(JobCB.filter(F.action == "save"))
 async def save_handler(
     callback: CallbackQuery, bot: Bot, notes: NotesRuntime | None, cards: CardBook
 ) -> None:
-    card = _admin_message(callback)
+    card = editable(callback)
     if card is None or notes is None:
         await callback.answer("Notes are unavailable right now.", show_alert=True)
         return
@@ -112,7 +105,7 @@ async def save_handler(
 async def offer_handler(
     callback: CallbackQuery, callback_data: NotesCB, notes: NotesRuntime | None, cards: CardBook
 ) -> None:
-    message = _admin_message(callback)
+    message = editable(callback)
     if notes is None:
         await callback.answer("Notes are unavailable right now.", show_alert=True)
         return
@@ -128,7 +121,7 @@ async def reminder_done_handler(
     callback: CallbackQuery, callback_data: NotesCB, notes: NotesRuntime | None
 ) -> None:
     """A Reminder's ✅ Готово: the Item is done and the message says so (ADR-0011)."""
-    message = _admin_message(callback)
+    message = editable(callback)
     if message is None:
         await callback.answer()
         return
@@ -147,7 +140,7 @@ async def reminder_done_handler(
 @router.callback_query(NotesCB.filter(F.action == "restore"))
 async def stale_restore_handler(callback: CallbackQuery) -> None:
     """An old ↩️ button: it only removes itself (ADR-0010)."""
-    message = _admin_message(callback)
+    message = editable(callback)
     await callback.answer()
     if message is not None:  # the button goes; a repeat tap finds it gone already
         with contextlib.suppress(TelegramBadRequest):

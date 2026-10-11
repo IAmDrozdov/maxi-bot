@@ -30,7 +30,7 @@ from shared.obs import get_logger
 log = get_logger(__name__)
 
 HELP = (
-    "\n\n📌 <b>Notes</b> (admin only): text, links, files, voice and round video messages are "
+    "\n\n📌 <b>Notes</b>: text, links, files, voice and round video messages are "
     "saved straight away. A single website link gets a card — 💾 save to notes, one of the agents "
     "above, or cancel; to run an agent on your own text, send it as a .txt file. The bot reacts "
     "to your message: ✍ working, 👌 saved, 👎 take a look. Saved items are filed into sections; "

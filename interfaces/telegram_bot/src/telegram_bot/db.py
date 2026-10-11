@@ -1,4 +1,4 @@
-"""sqlite persistence for the Telegram bot: users, invites, settings, usage.
+"""sqlite persistence for the Telegram bot: settings, usage.
 
 All helpers are synchronous; async callers wrap them in ``asyncio.to_thread``.
 Connections are opened per call (WAL mode), which is thread-safe by construction
@@ -15,25 +15,7 @@ from typing import Any
 
 from shared.config import settings
 
-INVITE_TTL_HOURS = 48
-
 _SCHEMA = """
-CREATE TABLE IF NOT EXISTS users (
-    telegram_id  INTEGER PRIMARY KEY,
-    username     TEXT,
-    first_name   TEXT,
-    invite_token TEXT,
-    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS invites (
-    token      TEXT PRIMARY KEY,
-    created_by INTEGER NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    used_by    INTEGER,
-    used_at    TEXT
-);
-
 CREATE TABLE IF NOT EXISTS user_settings (
     telegram_id INTEGER NOT NULL,
     key         TEXT NOT NULL,
@@ -66,6 +48,10 @@ CREATE TABLE IF NOT EXISTS jobs (
 );
 CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(telegram_id);
+
+-- The access model before ADR-022.
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS invites;
 """
 
 
@@ -95,7 +81,7 @@ def reconcile_running_jobs() -> int:
     """Close out jobs a previous process left mid-flight. Returns how many.
 
     Falls back to the approved estimate for cost_usd (rather than leaving it NULL,
-    counted as $0 by the daily cap) — see the security review, M4.
+    counted as $0 on the usage screen) — see the security review, M4.
     """
     with _connect() as conn:
         cur = conn.execute(
@@ -104,76 +90,6 @@ def reconcile_running_jobs() -> int:
             "cost_usd=COALESCE(cost_usd, estimated_cost_usd) WHERE status='running'"
         )
         return int(cur.rowcount or 0)
-
-
-# --- users / invites -------------------------------------------------------
-
-
-def upsert_user(
-    telegram_id: int,
-    username: str | None,
-    first_name: str | None,
-    invite_token: str | None = None,
-) -> None:
-    with _connect() as conn:
-        conn.execute(
-            "INSERT INTO users(telegram_id, username, first_name, invite_token) "
-            "VALUES (?, ?, ?, ?) "
-            "ON CONFLICT(telegram_id) DO UPDATE SET username=excluded.username, "
-            "first_name=excluded.first_name",
-            (telegram_id, username, first_name, invite_token),
-        )
-
-
-def is_whitelisted(telegram_id: int) -> bool:
-    with _connect() as conn:
-        row = conn.execute("SELECT 1 FROM users WHERE telegram_id=?", (telegram_id,)).fetchone()
-    return row is not None
-
-
-def list_users() -> list[dict[str, Any]]:
-    with _connect() as conn:
-        rows = conn.execute(
-            "SELECT telegram_id, username, first_name, created_at FROM users ORDER BY created_at"
-        ).fetchall()
-    return [dict(row) for row in rows]
-
-
-def delete_user(telegram_id: int) -> bool:
-    """Drop a user and their settings; True if there was a user row to drop."""
-    with _connect() as conn:
-        conn.execute("DELETE FROM user_settings WHERE telegram_id=?", (telegram_id,))
-        cur = conn.execute("DELETE FROM users WHERE telegram_id=?", (telegram_id,))
-        return cur.rowcount == 1
-
-
-def create_invite(token: str, created_by: int) -> None:
-    with _connect() as conn:
-        conn.execute("INSERT INTO invites(token, created_by) VALUES (?, ?)", (token, created_by))
-
-
-def redeem_invite(
-    token: str, telegram_id: int, username: str | None, first_name: str | None
-) -> bool:
-    """Atomically consume a one-time invite; True if this call redeemed it.
-
-    An unredeemed link stops working after INVITE_TTL_HOURS so a leaked one is not
-    a standing credential.
-    """
-    with _connect() as conn:
-        cur = conn.execute(
-            "UPDATE invites SET used_by=?, used_at=datetime('now') "
-            "WHERE token=? AND used_by IS NULL AND created_at > datetime('now', ?)",
-            (telegram_id, token, f"-{INVITE_TTL_HOURS} hours"),
-        )
-        if cur.rowcount != 1:
-            return False
-        conn.execute(
-            "INSERT OR IGNORE INTO users(telegram_id, username, first_name, invite_token) "
-            "VALUES (?, ?, ?, ?)",
-            (telegram_id, username, first_name, token),
-        )
-        return True
 
 
 # --- per-user settings -----------------------------------------------------
@@ -254,17 +170,6 @@ def finish_job(
                 job_id,
             ),
         )
-
-
-def user_cost_since(telegram_id: int, hours: int) -> float:
-    """Total recorded cost for one user over the last `hours`. Fuels the spend cap."""
-    with _connect(readonly=True) as conn:
-        row = conn.execute(
-            "SELECT COALESCE(SUM(cost_usd), 0) AS spent FROM jobs "
-            "WHERE telegram_id=? AND created_at > datetime('now', ?)",
-            (telegram_id, f"-{int(hours)} hours"),
-        ).fetchone()
-    return float(row["spent"]) if row else 0.0
 
 
 # --- ETA samples -----------------------------------------------------------

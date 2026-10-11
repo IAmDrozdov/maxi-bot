@@ -23,7 +23,6 @@ class Settings(BaseSettings):
     bot_default_source_language: str = "English"
     bot_default_target_language: str = "Russian"
     bot_max_job_cost_usd: float = 10.0
-    bot_daily_user_cost_limit_usd: float = 25.0
 
     # Notes (apps/notes, ADR-015): the admin's save-for-later store.
     notes_db_path: str = "data/notes.sqlite3"
