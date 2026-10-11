@@ -219,18 +219,6 @@ def query_history(limit: int = 200) -> list[dict[str, Any]]:
     return out
 
 
-def query_by_user() -> list[dict[str, Any]]:
-    with _connect(readonly=True) as conn:
-        rows = conn.execute(
-            "SELECT telegram_id, MAX(username) AS username, COUNT(*) AS jobs, "
-            "SUM(COALESCE(char_count, 0)) AS chars, "
-            "SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)) AS tokens, "
-            "ROUND(SUM(COALESCE(cost_usd, 0)), 4) AS cost_usd "
-            "FROM jobs GROUP BY telegram_id ORDER BY cost_usd DESC"
-        ).fetchall()
-    return [dict(row) for row in rows]
-
-
 def query_daily_cost(days: int) -> list[dict[str, Any]]:
     """Cost per UTC day over the last `days` days, today included; days without jobs are absent."""
     with _connect(readonly=True) as conn:
@@ -248,6 +236,7 @@ def query_totals() -> dict[str, Any]:
             "SELECT COUNT(*) AS jobs, "
             "SUM(CASE WHEN status='ok' THEN 1 ELSE 0 END) AS ok_jobs, "
             "SUM(CASE WHEN status='error' THEN 1 ELSE 0 END) AS error_jobs, "
+            "SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)) AS tokens, "
             "ROUND(SUM(COALESCE(cost_usd, 0)), 4) AS cost_usd "
             "FROM jobs"
         ).fetchone()

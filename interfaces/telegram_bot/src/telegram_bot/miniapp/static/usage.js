@@ -1,7 +1,7 @@
-// Расходы: totals, per-user spend and job history (phone port of the retired dashboard).
+// Расходы: totals and job history (phone port of the retired dashboard).
 // A filter tap only flips classes and swaps the history rows; nothing above them is rebuilt.
 
-import { api, attempt, el, parseTs, plural, reconcile, setText } from "./core.js";
+import { api, attempt, el, parseTs, reconcile, setText } from "./core.js";
 
 const AGENT_LABELS = { doc_translator: "📄 перевод", pdf_tts: "🔊 аудио", yt_dub: "🎬 озвучка" };
 const STATUS_BADGES = {
@@ -24,7 +24,6 @@ const fmtCost = (n) => (n == null ? "—" : "$" + Number(n).toFixed(4));
 const fmtDur = (n) => (n == null ? "—" : Number(n).toFixed(1) + " с");
 const fmtKb = (n) => (n == null ? "—" : (n / 1024).toFixed(0) + " КБ");
 const jobTokens = (job) => (job.input_tokens || 0) + (job.output_tokens || 0);
-const userLabel = (row) => (row.username ? "@" + row.username : "id " + row.telegram_id);
 
 function relTime(ts) {
   const date = parseTs(ts);
@@ -105,7 +104,7 @@ function jobCard(job) {
   const head = el("div", "job-head");
   head.append(el("span", "job-agent", AGENT_LABELS[job.agent] || job.agent), el("span", "badge " + cls, label));
   const file = el("div", "job-file", job.filename || "—");
-  const facts = [userLabel(job), relTime(job.created_at)];
+  const facts = [relTime(job.created_at)];
   if (jobTokens(job)) facts.push(fmtInt(jobTokens(job)) + " ток.");
   if (job.cost_usd != null) facts.push(fmtCost(job.cost_usd));
   if (job.duration_s != null) facts.push(fmtDur(job.duration_s));
@@ -119,16 +118,14 @@ function jobCard(job) {
 }
 
 export async function mountUsage(root) {
-  const state = { user: null, status: null, sort: "new" };
+  const state = { status: null, sort: "new" };
   let data = null;
   const jobNodes = new Map(); // job id -> card, so an expanded job stays expanded across filters
-  const userRows = new Map(); // telegram id -> row
 
   const toolbar = el("div", "toolbar");
   const refresh = el("button", "btn small ghost", "↻ Обновить");
   toolbar.append(el("h1", null, "Расходы бота"), refresh);
   const kpis = el("section", "kpis");
-  const users = el("section", "block");
   const history = el("section", "block");
   const historyTitle = el("h2", "grow", "История");
   const sort = el("select", "select");
@@ -153,10 +150,9 @@ export async function mountUsage(root) {
 
   function buildKpis() {
     const t = data.totals;
-    const tokens = data.by_user.reduce((sum, u) => sum + u.tokens, 0);
     const cost = tile("Всего потрачено", "$" + (t.cost_usd || 0), `по дням, ${DAYS} дн.`, sparkline(dailyCost(data.daily, DAYS)));
     const jobs = tile("Задачи", fmtInt(t.jobs), `${t.ok_jobs || 0} ок · ${t.error_jobs || 0} с ошибкой`);
-    const tok = tile("Токены", fmtInt(tokens), "перевод: вход + выход");
+    const tok = tile("Токены", fmtInt(t.tokens || 0), "перевод: вход + выход");
     const rate = t.jobs ? (100 * (t.error_jobs || 0)) / t.jobs : 0;
     errorTile = tile("Ошибки", rate.toFixed(1) + "%", "");
     errorSub = errorTile.querySelector(".sub");
@@ -169,47 +165,20 @@ export async function mountUsage(root) {
     kpis.replaceChildren(cost, jobs, tok, errorTile);
   }
 
-  function buildUsers() {
-    userRows.clear();
-    users.replaceChildren(el("h2", null, "По пользователям"));
-    if (!data.by_user.length) {
-      users.append(el("p", "empty", "Пока нет задач."));
-      return;
-    }
-    for (const u of data.by_user) {
-      const row = el("button", "user-row");
-      const jobs = `${fmtInt(u.jobs)} ${plural(u.jobs, "задача", "задачи", "задач")}`;
-      row.append(el("span", "user-name", userLabel(u)), el("span", "hint", `${jobs} · ${fmtInt(u.tokens)} ток.`), el("span", "user-cost", "$" + u.cost_usd.toFixed(4)));
-      row.onclick = () => {
-        state.user = state.user === u.telegram_id ? null : u.telegram_id;
-        syncFilters();
-        renderHistory();
-      };
-      userRows.set(u.telegram_id, row);
-      users.append(row);
-    }
-  }
-
-  // Highlights what is filtered; a tap on the highlighted tile or row clears it.
+  // Highlights what is filtered; a tap on the highlighted tile clears it.
   function syncFilters() {
     const errorsOnly = state.status === "error";
     errorTile.classList.toggle("on", errorsOnly);
     setText(errorSub, errorsOnly ? "сбросить фильтр" : "показать ошибки"); // same width, so the tile never reflows
-    for (const [id, row] of userRows) row.classList.toggle("on", state.user === id);
   }
 
   function renderHistory() {
     sort.value = state.sort;
     const parts = ["История"];
-    if (state.user != null) {
-      const u = data.by_user.find((row) => row.telegram_id === state.user);
-      parts.push(u ? userLabel(u) : String(state.user));
-    }
     if (state.status != null) parts.push("ошибки");
     setText(historyTitle, parts.join(" · "));
 
     let found = data.jobs.slice();
-    if (state.user != null) found = found.filter((job) => job.telegram_id === state.user);
     if (state.status != null) found = found.filter((job) => job.status === state.status);
     const keys = { new: (job) => job.id, cost: (job) => job.cost_usd ?? -1, slow: (job) => job.duration_s ?? -1 };
     found.sort((a, b) => keys[state.sort](b) - keys[state.sort](a));
@@ -227,7 +196,6 @@ export async function mountUsage(root) {
     data = fresh;
     jobNodes.clear();
     buildKpis();
-    buildUsers();
     syncFilters();
     renderHistory();
     return true;
@@ -235,7 +203,7 @@ export async function mountUsage(root) {
 
   refresh.onclick = load;
   if (await load()) {
-    root.replaceChildren(toolbar, kpis, users, history);
+    root.replaceChildren(toolbar, kpis, history);
     return;
   }
   const retry = el("button", "btn wide", "Повторить");

@@ -77,7 +77,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .btn.wide { display: block; width: 100%; margin-top: 12px; }
 .btn.ghost { background: transparent; color: var(--link); border: 1px solid var(--line); }
 .btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
-.btn:active, .chip.filter:active, .icon-btn:active, .rail button:active, .user-row:active { opacity: 0.7; }
+.btn:active, .chip.filter:active, .icon-btn:active, .rail button:active { opacity: 0.7; }
 
 /* The title row (ADR-021): part of the page, not sticky (a sticky bar slid half under Telegram's native header on iOS) */
 .bar { display: flex; align-items: center; gap: 8px; min-height: 40px; }
@@ -594,21 +594,6 @@ details.caption p { margin: 6px 0 0; overflow-wrap: anywhere; white-space: pre-w
 .spark-dot { fill: var(--accent); }
 
 .block { margin-top: 20px; }
-.user-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0 12px;
-  width: 100%;
-  margin-top: 8px;
-  padding: 10px 12px;
-  border: 2px solid transparent;
-  border-radius: var(--radius);
-  background: var(--card);
-  text-align: left;
-}
-.user-row.on { border-color: var(--accent); }
-.user-name { font-weight: 600; }
-.user-cost { grid-row: 1 / span 2; grid-column: 2; align-self: center; font-variant-numeric: tabular-nums; }
 
 .job { margin-top: 8px; padding: 10px 12px; background: var(--card); border-radius: var(--radius); cursor: pointer; }
 .job-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
