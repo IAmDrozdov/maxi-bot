@@ -1,4 +1,4 @@
-"""Mini App auth: verify Telegram-signed initData and admit only the admin (ADR-016)."""
+"""Mini App auth: verify Telegram-signed initData and admit only the Owner (ADR-016)."""
 
 from __future__ import annotations
 
@@ -64,8 +64,8 @@ def verify_init_data(init_data: str, secret: bytes, *, now: float | None = None)
     return user
 
 
-def require_admin(request: Request) -> int:
-    """FastAPI dependency: 401 without valid initData, 403 for anyone but ADMIN_TELEGRAM_ID."""
+def require_owner(request: Request) -> int:
+    """FastAPI dependency: 401 without valid initData, 403 for anyone but OWNER_TELEGRAM_ID."""
     scheme, _, credentials = request.headers.get("authorization", "").partition(" ")
     if scheme.lower() != "tma" or not credentials:
         raise HTTPException(status_code=401, detail="Telegram initData required")
@@ -75,7 +75,7 @@ def require_admin(request: Request) -> int:
         log.info("miniapp auth rejected: %s", exc)
         raise HTTPException(status_code=401, detail="Invalid or expired initData") from exc
     user_id = user.get("id")
-    if type(user_id) is not int or user_id != settings.admin_telegram_id:
-        log.info("miniapp auth refused a non-admin user")
-        raise HTTPException(status_code=403, detail="Admin only")
+    if type(user_id) is not int or user_id != settings.owner_telegram_id:
+        log.info("miniapp auth refused a user who is not the Owner")
+        raise HTTPException(status_code=403, detail="Owner only")
     return user_id

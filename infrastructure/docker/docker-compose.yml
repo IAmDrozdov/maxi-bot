@@ -39,7 +39,7 @@ services:
       - default
       - egress
 
-  # Admin Mini App (ADR-016): every /api call needs Telegram-signed initData from the admin.
+  # Mini App (ADR-016): every /api call needs Telegram-signed initData from the Owner.
   # Holds a derived HMAC key (miniapp.env), never the bot token. The loopback publish is only
   # for deploy.sh's health check; the funnel sidecar reaches it over the compose network.
   miniapp:

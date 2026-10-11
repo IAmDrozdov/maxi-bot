@@ -103,7 +103,7 @@ def reminder_keyboard(item_id: int) -> InlineKeyboardMarkup:
 
 async def send_reminder(bot: Bot, item: Item) -> bool:
     """Reply to the Item's Capture message with ✅ / 📅; if it is gone, say what it was. False: retry later."""
-    chat = item.tg_chat_id if item.tg_chat_id is not None else settings.admin_telegram_id
+    chat = item.tg_chat_id if item.tg_chat_id is not None else settings.owner_telegram_id
     if chat is None:
         return True
     markup = reminder_keyboard(item.id)

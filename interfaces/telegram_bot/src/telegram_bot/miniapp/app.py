@@ -1,4 +1,4 @@
-"""FastAPI app for the admin Mini App: a public static shell plus a signed JSON API (ADR-016, ADR-019)."""
+"""FastAPI app for the Mini App: a public static shell plus a signed JSON API (ADR-016, ADR-019)."""
 
 from __future__ import annotations
 

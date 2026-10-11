@@ -34,6 +34,11 @@ preflight() {
   (cd "$REPO_ROOT" && grype dir:. --only-fixed)
 }
 
+# Without these the bot answers nobody: stop before the preflight, the SSH gate and any upload.
+for key in OPENAI_API_KEY TELEGRAM_BOT_TOKEN OWNER_TELEGRAM_ID; do
+  grep -q "^$key=." "$REPO_ROOT/.env" || { echo "ERROR: $key is not set in .env" >&2; exit 1; }
+done
+
 # SSH is closed by default (ADR-017): check first, then run the whole deploy inside the gate.
 if [ -z "${SSH_GATE_HELD:-}" ]; then
   [ -n "${SKIP_PREFLIGHT:-}" ] || preflight
@@ -74,10 +79,7 @@ rsync -az --delete \
 
 echo "==> uploading bot.env (allow-listed keys only)"
 # Only the bot container needs secrets, plus the BOT_*/NOTES_* policy; DO_API_KEY etc. never leave this machine.
-BOT_ENV="$(grep -E '^(OPENAI_API_KEY|TELEGRAM_BOT_TOKEN|ADMIN_TELEGRAM_ID|LOG_LEVEL|YTDLP_PROXY|BOT_[A-Z_]+|NOTES_[A-Z_]+)=' "$REPO_ROOT/.env" || true)"
-for key in OPENAI_API_KEY TELEGRAM_BOT_TOKEN ADMIN_TELEGRAM_ID; do
-  grep -q "^$key=." <<<"$BOT_ENV" || { echo "ERROR: $key is not set in .env" >&2; exit 1; }
-done
+BOT_ENV="$(grep -E '^(OPENAI_API_KEY|TELEGRAM_BOT_TOKEN|OWNER_TELEGRAM_ID|LOG_LEVEL|YTDLP_PROXY|BOT_[A-Z_]+|NOTES_[A-Z_]+)=' "$REPO_ROOT/.env" || true)"
 printf '%s\n' "$BOT_ENV" \
   | ssh "${SSH_OPTS[@]}" "root@$IP" 'umask 077; cat > /opt/maxi_bot/bot.env; rm -f /opt/maxi_bot/.env'
 
@@ -86,7 +88,7 @@ echo "==> uploading miniapp.env and funnel.env"
 # Tailscale auth key goes to the funnel container alone (ADR-016).
 MINIAPP_INIT_SECRET="$(printf %s "$(env_value TELEGRAM_BOT_TOKEN)" \
   | python3 -c 'import hashlib, hmac, sys; print(hmac.new(b"WebAppData", sys.stdin.buffer.read(), hashlib.sha256).hexdigest())')"
-{ grep -E '^(ADMIN_TELEGRAM_ID|LOG_LEVEL)=' "$REPO_ROOT/.env" || true; printf 'MINIAPP_INIT_SECRET=%s\n' "$MINIAPP_INIT_SECRET"; } \
+{ grep -E '^(OWNER_TELEGRAM_ID|LOG_LEVEL)=' "$REPO_ROOT/.env" || true; printf 'MINIAPP_INIT_SECRET=%s\n' "$MINIAPP_INIT_SECRET"; } \
   | ssh "${SSH_OPTS[@]}" "root@$IP" 'umask 077; cat > /opt/maxi_bot/miniapp.env'
 printf 'TS_AUTHKEY=%s\n' "$TS_AUTHKEY" \
   | ssh "${SSH_OPTS[@]}" "root@$IP" 'umask 077; cat > /opt/maxi_bot/funnel.env'

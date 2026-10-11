@@ -1,4 +1,4 @@
-"""Notes for the admin: a Capture is saved, enriched in the background and acknowledged by a reaction."""
+"""Notes: a Capture is saved, enriched in the background and acknowledged by a reaction."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ router = Router(name="notes")
 async def direct_text_handler(
     message: Message, bot: Bot, notes: NotesRuntime | None, path: routing.Path, cards: CardBook
 ) -> None:
-    """Admin: text and social links go straight to notes as one Link or Note (ADR-0007, ADR-0009)."""
+    """Text and social links go straight to notes as one Link or Note (ADR-0007, ADR-0009)."""
     user = message.from_user
     if user is None:
         return
@@ -48,7 +48,7 @@ async def direct_text_handler(
 async def file_handler(
     message: Message, bot: Bot, notes: NotesRuntime | None, path: routing.Path
 ) -> None:
-    """Admin: a photo or non-text file is saved as a File Item, with its preview for the Mini App."""
+    """A photo or non-text file is saved as a File Item, with its preview for the Mini App."""
     if notes is None:
         await notes_ui.react(bot, message.chat.id, message.message_id, notes_ui.EMOJI["look"])
         return
@@ -59,7 +59,7 @@ async def file_handler(
 async def voice_handler(
     message: Message, bot: Bot, notes: NotesRuntime | None, path: routing.Path
 ) -> None:
-    """Admin: a voice or round video message becomes a Voice; Enrichment transcribes it."""
+    """A voice or round video message becomes a Voice; Enrichment transcribes it."""
     if notes is None:
         await notes_ui.react(bot, message.chat.id, message.message_id, notes_ui.EMOJI["look"])
         return

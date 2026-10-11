@@ -14,9 +14,9 @@ from notes.domain import clock, items, lists, reminders, sections
 from notes.domain import dashboard as dashboard_read
 from notes.domain.items import UNSET, Item, Status, Unset
 
-from .auth import require_admin
+from .auth import require_owner
 
-router = APIRouter(prefix="/api/notes", dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/api/notes", dependencies=[Depends(require_owner)])
 
 ItemId = Annotated[int, Field(ge=1, le=2**63 - 1)]  # sqlite's INTEGER range
 

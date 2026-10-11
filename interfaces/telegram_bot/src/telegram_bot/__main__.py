@@ -33,11 +33,8 @@ COMMANDS = [
 MENU_BUTTON_TEXT = "📒"  # Telegram adds its own app icon; a word would squeeze the message field
 
 
-async def set_admin_menu_button(bot: Bot) -> None:
-    """Point the admin's menu button at the Mini App, or back to the default (ADR-016)."""
-    admin = settings.admin_telegram_id
-    if admin is None:
-        return
+async def set_owner_menu_button(bot: Bot, owner: int) -> None:
+    """Point the Owner's menu button at the Mini App, or back to the default (ADR-016)."""
     url = settings.bot_miniapp_url.strip()
     button = (
         MenuButtonWebApp(text=MENU_BUTTON_TEXT, web_app=WebAppInfo(url=url))
@@ -45,9 +42,9 @@ async def set_admin_menu_button(bot: Bot) -> None:
         else MenuButtonDefault()
     )
     try:
-        await bot.set_chat_menu_button(chat_id=admin, menu_button=button)
-    except TelegramAPIError as exc:  # e.g. the admin never opened the chat with the bot
-        log.warning("could not set the admin's menu button: %s", exc)
+        await bot.set_chat_menu_button(chat_id=owner, menu_button=button)
+    except TelegramAPIError as exc:  # e.g. the Owner never opened the chat with the bot
+        log.warning("could not set the Owner's menu button: %s", exc)
 
 
 async def _run() -> None:
@@ -55,8 +52,9 @@ async def _run() -> None:
     if token is None:
         log.error("TELEGRAM_BOT_TOKEN is not set — refusing to start")
         sys.exit(1)
-    if settings.admin_telegram_id is None:
-        log.error("ADMIN_TELEGRAM_ID is not set — refusing to start")
+    owner = settings.owner_telegram_id
+    if owner is None:
+        log.error("OWNER_TELEGRAM_ID is not set — refusing to start")
         sys.exit(1)
 
     db.init_db()
@@ -68,7 +66,7 @@ async def _run() -> None:
     queue = JobQueue()
     dp["queue"] = queue
     dp["cards"] = CardBook(intake=LiveIntake())
-    # Notes is admin-only (ADR-015): if it cannot start, the bot runs without it and 💾 says so.
+    # If notes cannot start, the bot runs without it and 💾 says so (ADR-015).
     try:
         notes = build_notes_runtime()
     except Exception:
@@ -85,7 +83,7 @@ async def _run() -> None:
         me = await bot.me()
         log.info("polling as @%s (id=%s)", me.username, me.id)
         await bot.set_my_commands(COMMANDS)
-        await set_admin_menu_button(bot)
+        await set_owner_menu_button(bot, owner)
         task = asyncio.create_task(worker_loop(bot, queue))
         background.add(task)
         task.add_done_callback(background.discard)

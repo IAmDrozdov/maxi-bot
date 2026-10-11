@@ -12,7 +12,7 @@ Full infra docs: `infrastructure/README.md` (ADR-008); what each service does:
 
 ## Preconditions
 
-- `.env` at repo root has `OPENAI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `ADMIN_TELEGRAM_ID`. Only the
+- `.env` at repo root has `OPENAI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `OWNER_TELEGRAM_ID`. Only the
   allow-listed keys reach the droplet (`deploy.sh`); a new env var needs the regex there too.
 - `.env` also has `DO_API_KEY`: the droplet's SSH port is closed, and `deploy.sh` opens it for
   this machine's address through `infrastructure/ssh-gate.sh` (ADR-017). A plain `ssh root@<ip>`

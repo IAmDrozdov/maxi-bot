@@ -8,9 +8,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 
 from .. import db
-from .auth import require_admin
+from .auth import require_owner
 
-router = APIRouter(prefix="/api", dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/api", dependencies=[Depends(require_owner)])
 
 DAILY_DAYS = 14  # the sparkline's span; static/usage.js draws the same number of days
 

@@ -1,4 +1,4 @@
-"""Put live-test media into the admin's chat with the bot, and delete test messages afterwards.
+"""Put live-test media into the Owner's chat with the bot, and delete test messages afterwards.
 
 The bot posts the message (Bot API, the token from .env; it does not poll, so the droplet's bot
 keeps running). A case then forwards it from Telegram Web, which is how the bot receives it.
@@ -36,9 +36,9 @@ def _ffmpeg(*args: str) -> None:
 
 
 async def _run(args: argparse.Namespace) -> None:
-    token, chat = settings.telegram_bot_token, settings.admin_telegram_id
+    token, chat = settings.telegram_bot_token, settings.owner_telegram_id
     if token is None or chat is None:
-        raise SystemExit("TELEGRAM_BOT_TOKEN and ADMIN_TELEGRAM_ID must be set in .env")
+        raise SystemExit("TELEGRAM_BOT_TOKEN and OWNER_TELEGRAM_ID must be set in .env")
     bot = Bot(token=token.get_secret_value())
     try:
         with tempfile.TemporaryDirectory() as tmp:
@@ -86,7 +86,7 @@ def main() -> None:
     p.add_argument("path", type=Path)
     p.add_argument("--caption", default=LABEL)
     p = sub.add_parser(
-        "delete", help="delete messages in the admin chat (bot's or admin's, < 48 h)"
+        "delete", help="delete messages in the Owner's chat (the bot's or the Owner's, < 48 h)"
     )
     p.add_argument("ids", type=int, nargs="*")
     p.add_argument(

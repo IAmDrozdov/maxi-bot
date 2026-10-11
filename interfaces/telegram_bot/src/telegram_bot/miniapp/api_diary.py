@@ -13,10 +13,10 @@ from diary import domain
 from diary.db import Database
 from diary.domain import Day, Entry, Summary
 
-from .auth import require_admin
+from .auth import require_owner
 
 # A DiaryError (bad text, Day, Mark or Level step) is a 422, mapped in app.py.
-router = APIRouter(prefix="/api/diary", dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/api/diary", dependencies=[Depends(require_owner)])
 
 EntryId = Annotated[int, Field(ge=1, le=2**63 - 1)]
 Zone = Annotated[str | None, Query(max_length=64)]

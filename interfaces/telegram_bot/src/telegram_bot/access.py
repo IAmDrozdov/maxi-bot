@@ -1,4 +1,4 @@
-"""Access control: the bot answers its admin in a private chat and nobody else (ADR-022)."""
+"""Access control: the bot answers the Owner in a private chat and nobody else (ADR-022)."""
 
 from __future__ import annotations
 
@@ -15,18 +15,18 @@ from shared.obs import get_logger
 log = get_logger(__name__)
 
 
-def is_admin(user_id: int) -> bool:
-    return user_id == settings.admin_telegram_id
+def is_owner(user_id: int) -> bool:
+    return user_id == settings.owner_telegram_id
 
 
-async def allowed_user_filter(event: Message | CallbackQuery) -> bool:
+async def owner_filter(event: Message | CallbackQuery) -> bool:
     """Defense in depth: every router repeats the middleware's check (see `handlers/__init__.py`)."""
     user = event.from_user
-    return user is not None and is_admin(user.id)
+    return user is not None and is_owner(user.id)
 
 
 class AccessMiddleware(BaseMiddleware):
-    """Outer middleware on Update: anything but the admin's private chat is dropped without a reply."""
+    """Outer middleware on Update: anything but the Owner's private chat is dropped without a reply."""
 
     async def __call__(
         self,
@@ -47,7 +47,7 @@ class AccessMiddleware(BaseMiddleware):
 
         if user is None:
             return None  # channel posts, polls, etc. — not for this bot
-        if not is_admin(user.id):
+        if not is_owner(user.id):
             log.debug("dropped an update from telegram user %s", user.id)
             return None
 

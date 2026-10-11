@@ -10,7 +10,7 @@ bot chat's URL) live in `CLAUDE.local.md`, which is gitignored because this repo
   the owner. Work only in the tabs you opened or the Telegram Web / Mini App tab; leave the owner's
   other tabs alone. A login QR still means the wrong profile: stop and report.
 - Send only `🧪`-labelled content, and never tap Run on an agent card (paid).
-- Mini App `initData` read from the page is an admin credential for 24 h: keep it under `.local/`,
+- Mini App `initData` read from the page is the Owner's credential for 24 h: keep it under `.local/`,
   never print or commit it.
 
 ## Mechanics

@@ -10,7 +10,7 @@ NODE = re.compile(r"^\s*uid=(\S+)\s+(.*?)\s*$")
 
 
 def mask(line: str) -> str:
-    """Iframe and page URLs carry the Mini App's initData (an admin credential for 24 h)."""
+    """Iframe and page URLs carry the Mini App's initData (the Owner's credential for 24 h)."""
     return INIT_DATA.sub("<masked>", URL.sub(lambda m: f'{m.group(1)}="<masked>"', line))
 
 

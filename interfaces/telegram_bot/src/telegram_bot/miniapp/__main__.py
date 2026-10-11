@@ -1,4 +1,4 @@
-"""Entrypoint for the admin Mini App server (published by the funnel sidecar, ADR-016)."""
+"""Entrypoint for the Mini App server (published by the funnel sidecar, ADR-016)."""
 
 from __future__ import annotations
 
@@ -19,13 +19,13 @@ log = get_logger(__name__)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="admin Mini App server")
+    parser = argparse.ArgumentParser(description="Mini App server")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8083)
     args = parser.parse_args()
 
-    if settings.admin_telegram_id is None:
-        log.error("ADMIN_TELEGRAM_ID is not set — refusing to start")
+    if settings.owner_telegram_id is None:
+        log.error("OWNER_TELEGRAM_ID is not set — refusing to start")
         sys.exit(1)
     init_tracing(settings=settings, service_name="maxi-bot-miniapp")
     notes_db = Database(settings.notes_db_path)

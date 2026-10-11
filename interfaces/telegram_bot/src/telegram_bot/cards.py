@@ -69,7 +69,7 @@ class Pending:
     previews: dict[str, Preview] = field(default_factory=dict)
     estimates: dict[str, Estimate] = field(default_factory=dict)
     created_at: float = field(default_factory=time.monotonic)
-    # The admin's card also offers 💾 (ADR-015); what it saves lives in the book's savables.
+    # A savable card also offers 💾 (ADR-015); what it saves lives in the book's savables.
     savable: bool = False
 
     @property
@@ -366,7 +366,7 @@ class CardBook:
     async def _open_card(
         self, message: Message, status_text: str, savable: object | None
     ) -> Message:
-        """The immediate answer: a status line (with 💾 / Cancel for the admin) that becomes the card."""
+        """The immediate answer: a status line (with 💾 / Cancel when it is savable) that becomes the card."""
         status = await message.answer(
             status_text, reply_markup=draft_menu() if savable is not None else None
         )

@@ -30,7 +30,7 @@ PREVIEW_MAX_BYTES = 300_000
 
 @dataclass(frozen=True)
 class Draft(Text):
-    """What 💾 saves: the admin's words of one message, held by its Estimate card until 💾, Cancel or Run."""
+    """What 💾 saves: the Owner's words of one message, held by its Estimate card until 💾, Cancel or Run."""
 
     sender: str | None = None
     message_id: int | None = None
@@ -51,7 +51,7 @@ def sender_of(message: Message) -> str | None:
 
 
 def draft_of(message: Message) -> Draft:
-    """The admin's words and hidden links (read the way routing reads them), the Sender and the message."""
+    """The Owner's words and hidden links (read the way routing reads them), the Sender and the message."""
     incoming = routing.incoming_of(message)
     return Draft(
         words=incoming.text,

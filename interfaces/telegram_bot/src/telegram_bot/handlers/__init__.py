@@ -18,6 +18,6 @@ def setup_routers(dp: Dispatcher) -> None:
         settings_menu.router,
         status.router,
     ):
-        router.message.filter(access.allowed_user_filter)
-        router.callback_query.filter(access.allowed_user_filter)
+        router.message.filter(access.owner_filter)
+        router.callback_query.filter(access.owner_filter)
         dp.include_router(router)

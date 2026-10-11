@@ -1,4 +1,4 @@
-"""Dev launcher: run the admin Mini App on throwaway DBs with a signed local URL (docs/verifying.md §2)."""
+"""Dev launcher: run the Mini App on throwaway DBs with a signed local URL (docs/verifying.md §2)."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ NOTES_DB = WORK / "notes.sqlite3"
 BOT_DB = WORK / "bot.sqlite3"
 DIARY_DB = WORK / "diary.sqlite3"
 
-TEST_ADMIN_ID = 100  # the only id the local server admits
+TEST_OWNER_ID = 100  # the only id the local server admits
 HOST = "127.0.0.1"
 SOURCE_NOTES = "notes.sqlite3"
 SOURCE_BOT = "telegram_bot.sqlite3"
@@ -46,7 +46,7 @@ def sign_init_data(secret: str) -> str:
     """URL-encoded initData signed the way Telegram does; the key is the raw bytes of the hex secret."""
     fields = {
         "query_id": "AAHlocal",
-        "user": json.dumps({"id": TEST_ADMIN_ID, "first_name": "Local"}, separators=(",", ":")),
+        "user": json.dumps({"id": TEST_OWNER_ID, "first_name": "Local"}, separators=(",", ":")),
         "auth_date": str(int(time.time())),
         "signature": "bG9jYWwtc2lnbmF0dXJl",
     }
@@ -130,8 +130,8 @@ def seed_diary(path: Path) -> None:
 def seed_jobs(path: Path) -> None:
     """A few usage rows for the «Расходы» screen; the server has already created the schema."""
     rows = [
-        (TEST_ADMIN_ID, "admin", "pdf_tts", "🧪 a.pdf", "ok", 0.12, f"-{n} days") for n in range(4)
-    ] + [(TEST_ADMIN_ID, "admin", "doc_translator", "🧪 b.docx", "ok", 0.31, "-1 days")]
+        (TEST_OWNER_ID, "owner", "pdf_tts", "🧪 a.pdf", "ok", 0.12, f"-{n} days") for n in range(4)
+    ] + [(TEST_OWNER_ID, "owner", "doc_translator", "🧪 b.docx", "ok", 0.31, "-1 days")]
     with sqlite3.connect(path) as conn:
         conn.executemany(
             "INSERT INTO jobs(telegram_id, username, agent, filename, status, cost_usd, created_at) "
@@ -237,7 +237,7 @@ def start(args: argparse.Namespace) -> int:
     env = {
         "PATH": os.environ.get("PATH", ""),
         "HOME": os.environ.get("HOME", ""),
-        "ADMIN_TELEGRAM_ID": str(TEST_ADMIN_ID),
+        "OWNER_TELEGRAM_ID": str(TEST_OWNER_ID),
         "NOTES_DB_PATH": str(NOTES_DB),
         "TELEGRAM_DB_PATH": str(BOT_DB),
         "DIARY_DB_PATH": str(DIARY_DB),

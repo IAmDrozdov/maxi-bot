@@ -182,7 +182,7 @@ class Alerts:
         self.source = source
         self.state = state
         self.token = env.get("TELEGRAM_BOT_TOKEN")
-        self.chat_id = env.get("ADMIN_TELEGRAM_ID")
+        self.chat_id = env.get("OWNER_TELEGRAM_ID")
 
     def send(self, reason: str, text: str) -> None:
         if self.token:
@@ -195,7 +195,7 @@ class Alerts:
         if self.source == "local":
             log.info("would send: %s", text)
         elif not (self.token and self.chat_id):
-            log.error("no bot message: TELEGRAM_BOT_TOKEN or ADMIN_TELEGRAM_ID missing in .env")
+            log.error("no bot message: TELEGRAM_BOT_TOKEN or OWNER_TELEGRAM_ID missing in .env")
         else:
             try:
                 sent = bot_api(self.token, "sendMessage", chat_id=self.chat_id, text=text)
@@ -498,7 +498,7 @@ def report_failure(alerts: Alerts, reason: str) -> None:
 
 
 def run(source: str, force: bool) -> int:
-    env = read_env("TELEGRAM_BOT_TOKEN", "ADMIN_TELEGRAM_ID")
+    env = read_env("TELEGRAM_BOT_TOKEN", "OWNER_TELEGRAM_ID")
     token = env.get("TELEGRAM_BOT_TOKEN")
     setup_logging(token)
     override = os.environ.get("MAXI_BOT_BACKUP_DIR")

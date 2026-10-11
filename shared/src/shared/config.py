@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
 
     telegram_bot_token: SecretStr | None = None
-    admin_telegram_id: int | None = None
+    owner_telegram_id: int | None = None
     telegram_db_path: str = "data/telegram_bot.sqlite3"
 
     # Egress proxy for yt-dlp only, e.g. socks5h://warp:40000 (ADR-014). Unset = direct.
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     bot_default_target_language: str = "Russian"
     bot_max_job_cost_usd: float = 10.0
 
-    # Notes (apps/notes, ADR-015): the admin's save-for-later store.
+    # Notes (apps/notes, ADR-015): the Owner's save-for-later store.
     notes_db_path: str = "data/notes.sqlite3"
     notes_enrich_sweep_seconds: int = 60
     notes_classifier_provider: str = "fake"  # fake | openai
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # Diary (apps/diary, ADR-020): only the Mini App reads and writes it.
     diary_db_path: str = "data/diary.sqlite3"
 
-    # Admin Mini App (ADR-016): its public HTTPS URL; empty = no menu button, no ✏️ button.
+    # Mini App (ADR-016): its public HTTPS URL; empty = no menu button, no ✏️ button.
     bot_miniapp_url: str = ""
     # hex HMAC_SHA256("WebAppData", bot token) for the miniapp container; empty = derive from the token.
     miniapp_init_secret: SecretStr | None = None

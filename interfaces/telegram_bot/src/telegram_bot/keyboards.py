@@ -52,7 +52,7 @@ class TryCB(CallbackData, prefix="t"):
 
 
 class JobCB(CallbackData, prefix="j"):
-    """Pending-job actions: action is 'run', 'settings', 'cancel', 'save' (admin: to notes)."""
+    """Pending-job actions: action is 'run', 'settings', 'cancel', 'save' (to notes)."""
 
     action: str
     workflow: str = ""
@@ -139,7 +139,7 @@ SAVE_LABEL = "💾 В заметки"
 
 
 def draft_menu() -> InlineKeyboardMarkup:
-    """The admin's immediate answer while the card is still being priced."""
+    """The immediate answer to a savable link while the card is still being priced."""
     builder = InlineKeyboardBuilder()
     builder.button(text=SAVE_LABEL, callback_data=JobCB(action="save"))
     builder.button(text="✖️ Cancel", callback_data=JobCB(action="cancel"))
@@ -148,14 +148,14 @@ def draft_menu() -> InlineKeyboardMarkup:
 
 
 def save_only_menu() -> InlineKeyboardMarkup:
-    """When no agent can take it, the admin can still keep it."""
+    """When no agent can take it, the Owner can still keep it."""
     builder = InlineKeyboardBuilder()
     builder.button(text=SAVE_LABEL, callback_data=JobCB(action="save"))
     return builder.as_markup()
 
 
 def action_menu(options: list[ActionOption], *, savable: bool = False) -> InlineKeyboardMarkup:
-    """Save (admin) first, then one button per priced agent; tap runs. Settings + Cancel last."""
+    """Save (a savable card) first, then one button per priced agent; tap runs. Settings + Cancel last."""
     builder = InlineKeyboardBuilder()
     if savable:
         builder.button(text=SAVE_LABEL, callback_data=JobCB(action="save"))
