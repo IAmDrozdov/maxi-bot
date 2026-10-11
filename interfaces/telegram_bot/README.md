@@ -1,7 +1,7 @@
 # interfaces/telegram_bot
 
 Private Telegram bot exposing every workflow in `registry.py` (`doc_translator`,
-`pdf_tts`, `yt_dub`) through the job contract (ADR-005 thin adapter, ADR-012), plus the admin
+`pdf_tts`, `yt_dub`) through the job contract (ADR-005 thin adapter, ADR-012), plus the Owner's
 Mini App for notes, the diary and usage (`miniapp/`, ADR-016, ADR-021). Both use the bot's sqlite database
 (`TELEGRAM_DB_PATH`); the Mini App also writes the notes database.
 
@@ -14,12 +14,11 @@ Responsibilities:
   action buttons (no separate confirm step); settings still reachable from the card
 - history-backed ETA (`eta.py`): median sec/char from the jobs table, LRU cache
   rebuilt every few finished jobs, cold-start priors until enough samples exist
-- inline-keyboard selection of languages, models, voice (persisted per user)
+- inline-keyboard selection of languages, models, voice (persisted)
 - call `WORKFLOW.run` in a worker thread; one job at a time (FIFO queue)
 - deliver `FileDeliverable`s as documents and `AudioDeliverable`s as **voice messages** (see below)
-- access control: single admin (`ADMIN_TELEGRAM_ID`) mints one-time invite links
-  (`/invite` → `t.me/<bot>?start=<token>`); redeemed users are whitelisted in sqlite
-  until the admin runs `/revoke <id>`; private chats only
+- access control: the bot answers the Owner (`OWNER_TELEGRAM_ID`) in a private chat and drops
+  every other update without a reply (`access.py`, ADR-022)
 - record every job (chars, cost USD + cost lines, facts, duration, status) for the Mini App's «Расходы» screen
 
 Non-responsibilities: no prompt/template logic, no direct LLM SDK usage.
@@ -77,37 +76,35 @@ uv run telegram-miniapp --host 127.0.0.1 --port 8083  # Mini App server (Funnel 
 ```
 
 Env (via `shared.config.Settings` / `.env`): `TELEGRAM_BOT_TOKEN`,
-`ADMIN_TELEGRAM_ID`, `TELEGRAM_DB_PATH`, `OPENAI_API_KEY`, `BOT_MINIAPP_URL`, plus the operator policy
+`OWNER_TELEGRAM_ID`, `TELEGRAM_DB_PATH`, `OPENAI_API_KEY`, `BOT_MINIAPP_URL`, plus the operator policy
 `BOT_LANGUAGES`, `BOT_DEFAULT_SOURCE_LANGUAGE`, `BOT_DEFAULT_TARGET_LANGUAGE`,
-`BOT_MAX_JOB_COST_USD`, `BOT_DAILY_USER_COST_LIMIT_USD` (defaults in `shared/config.py`;
-a user's own `/settings` choices override the language defaults).
+`BOT_MAX_JOB_COST_USD` (defaults in `shared/config.py`;
+the Owner's `/settings` choices override the language defaults). Without `OWNER_TELEGRAM_ID`
+neither process starts.
 
-## Cost guards
+## Cost guard
 
-`BOT_MAX_JOB_COST_USD` refuses any single job estimated above it. `BOT_DAILY_USER_COST_LIMIT_USD`
-refuses a non-admin user's job once their rolling 24h spend (finished + queued + running,
-re-priced at Run) would exceed it; the admin is exempt. The window is fixed in `catalog.py`.
+`BOT_MAX_JOB_COST_USD` refuses any single job estimated above it (re-priced at Run).
 
 ## Bot commands
 
-- `/start [invite-token]` — redeem an invite / show help
-- `/help`, `/settings`, `/status`, `/cancel`
-- `/invite`, `/users`, `/revoke <telegram_id>` — admin only
+- `/start`, `/help` — the help text
+- `/settings`, `/status`, `/cancel`
 
-## Notes (admin only)
+## Notes
 
-The admin's text and links get the usual card with 💾 В заметки on top; 💾 saves them as notes
-Items (`apps/notes`, ADR-015). The routing table, card lifecycle and notes path are in
-`docs/runtime.md`.
+The Owner's text, files and voice messages are Captured at once; a single website link gets the
+usual card with 💾 В заметки on top, and 💾 saves it as a notes Item (`apps/notes`, ADR-015). The
+routing table, card lifecycle and notes path are in `docs/runtime.md`.
 
-## Mini App (admin only, ADR-016)
+## Mini App (ADR-016)
 
-The admin's chat has a `📒` menu button while `BOT_MINIAPP_URL` is set. It opens the `miniapp` service
+The Owner's chat has a `📒` menu button while `BOT_MINIAPP_URL` is set. It opens the `miniapp` service
 (`miniapp/`): a static shell plus a JSON API.
 
-Routes: the "Admin Mini App" section of `docs/runtime.md`.
+Routes: the "Mini App" section of `docs/runtime.md`.
 
-Every `/api` call needs `Authorization: tma <initData>` (Telegram-signed, at most 24 h old, admin
+Every `/api` call needs `Authorization: tma <initData>` (Telegram-signed, at most 24 h old, the Owner's
 id only: 401 or 403 otherwise). The routes only parse and serialise; notes rules live in
 `apps/notes`. Setup and checks: `infrastructure/README.md`, `docs/verifying.md`.
 

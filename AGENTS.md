@@ -3,14 +3,14 @@
 Map. Follow links. No rule duplication here. Humans start at `README.md`.
 
 ## What this is
-Monorepo of local AI workflows exposed through one job contract (`shared.job`, ADR-012) by a private Telegram bot and a terminal smoke runner, plus two stateful apps — `apps/notes`, the admin's save-for-later store (ADR-015), and `apps/diary`, the admin's diary, reached only from the Mini App (ADR-020). New interfaces are thin adapters holding a registry of workflow descriptors. No automated tests (ADR-001).
+Monorepo of local AI workflows exposed through one job contract (`shared.job`, ADR-012) by a private Telegram bot that answers one Owner and nobody else (ADR-022) and a terminal smoke runner, plus two stateful apps — `apps/notes`, the Owner's save-for-later store (ADR-015), and `apps/diary`, the Owner's diary, reached only from the Mini App (ADR-020). New interfaces are thin adapters holding a registry of workflow descriptors. No automated tests (ADR-001).
 
 ## Docs, read by task
 - Any bot, notes or deploy work: `docs/runtime.md` first (what runs, how the parts talk, in-memory state, touch points).
 - Layers, deps, interface exposure: `docs/architecture.md`. Naming, layout, configs, business docs: `docs/conventions.md`.
 - uv, ruff, ty, pre-commit, layer checker, grype: `docs/tooling.md`. Approach -> skill -> binding rules: `docs/approaches-skills-rules-map.md`.
 - Proving a change works with no tests (smoke, the offline bot harness, free production checks): `docs/verifying.md`.
-- ADRs in `docs/decisions/` are binding: read every ADR that touches the area you change (a superseded one says so in its Status line). ADR-001 (no automated tests) and ADR-017 (SSH closed by default) apply everywhere.
+- ADRs in `docs/decisions/` are binding: read every ADR that touches the area you change (a superseded one says so in its Status line). ADR-001 (no automated tests), ADR-017 (SSH closed by default) and ADR-022 (one Owner, no other users) apply everywhere.
 
 ## Common tasks
 - New workflow -> `.skills/create-workflow.md`
@@ -18,7 +18,7 @@ Monorepo of local AI workflows exposed through one job contract (`shared.job`, A
 - Run a workflow from the terminal -> `uv run smoke <id> <path-or-url>`
 - Notes (app) -> `apps/notes/README.md`; smoke: `uv run notes-smoke <url-or-text>`
 - Diary (app) -> `apps/diary/README.md`, `docs/decisions/020-diary-app-and-per-app-dashboards.md`; checks: `docs/verifying.md` §2
-- Admin Mini App (notes, diary, usage) -> `docs/decisions/016-telegram-mini-app.md`, `docs/decisions/019-mini-app-over-a-slow-link.md` (caching, snapshot, polling), `docs/decisions/021-mini-app-place-and-mode-navigation.md` (Place and Mode, what is remembered, row actions), `docs/runtime.md`; checks: `docs/verifying.md` §2 and §5
+- Mini App (notes, diary, usage) -> `docs/decisions/016-telegram-mini-app.md`, `docs/decisions/019-mini-app-over-a-slow-link.md` (caching, snapshot, polling), `docs/decisions/021-mini-app-place-and-mode-navigation.md` (Place and Mode, what is remembered, row actions), `docs/runtime.md`; checks: `docs/verifying.md` §2 and §5
 - Domain terms -> `CONTEXT.md`
 - New ADR -> `docs/decisions/NNN-title.md`
 - Deploy bot to droplet -> `.claude/skills/deploy-bot/SKILL.md` (slash: `/deploy-bot`)
@@ -53,7 +53,7 @@ Manual run: `uv run pre-commit run --all-files`.
 - Disabling pre-commit hooks
 
 ## Stack (fixed)
-Py 3.12+, uv workspaces, Ruff, ty, Pydantic, LangChain (primary), LangGraph (justified), aiogram Telegram bot + FastAPI admin Mini App (notes, diary and usage), sqlite, pre-commit.
+Py 3.12+, uv workspaces, Ruff, ty, Pydantic, LangChain (primary), LangGraph (justified), aiogram Telegram bot + FastAPI Mini App (notes, diary and usage), sqlite, pre-commit.
 
 ## Agent skills
 

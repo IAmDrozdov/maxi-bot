@@ -1,6 +1,6 @@
 # infrastructure
 
-Terraform + Docker deployment of the Telegram bot and the admin Mini App to a
+Terraform + Docker deployment of the Telegram bot and its Mini App to a
 single DigitalOcean droplet.
 
 ## What runs where
@@ -8,9 +8,9 @@ single DigitalOcean droplet.
 - **Droplet** (`s-1vcpu-1gb`, ~$6/mo, Ubuntu 24.04 + 2 GB swap): Docker Compose
   with two containers built from one image, plus optional sidecars —
   - `bot` — `telegram-bot`, long polling (outbound only, no public ingress); also
-    runs notes Capture and link enrichment for the admin (ADR-015)
-  - `miniapp` — `telegram-miniapp`, the admin Mini App (ADR-016): every API call needs
-    Telegram-signed data from the admin. Published on the droplet's loopback
+    runs notes Capture and link enrichment (ADR-015)
+  - `miniapp` — `telegram-miniapp`, the Mini App (ADR-016): every API call needs
+    Telegram-signed data from the Owner. Published on the droplet's loopback
     (`127.0.0.1:8083`) for the health check only
   - `funnel` (optional) — the Tailscale Funnel sidecar that publishes `miniapp` over HTTPS
     through an outbound tunnel
@@ -45,7 +45,7 @@ Two values are yours to set:
 
 - `terraform` >= 1.5 (`brew install hashicorp/tap/terraform`)
 - `trufflehog` and `grype` (`brew install trufflehog grype`): the deploy preflight
-- repo `.env` filled: `OPENAI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `ADMIN_TELEGRAM_ID`, `DO_API_KEY`
+- repo `.env` filled: `OPENAI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `OWNER_TELEGRAM_ID`, `DO_API_KEY`
 - budget: the default droplet is ~$6/mo, plus your OpenAI usage
 
 ## Reaching the droplet
@@ -92,9 +92,9 @@ finding stops the deploy; `SKIP_PREFLIGHT=1` skips the preflight for an emergenc
 rest runs inside the SSH gate.
 
 Rsyncs the repo to `/opt/maxi_bot/src`, uploads **only** `OPENAI_API_KEY`,
-`TELEGRAM_BOT_TOKEN`, `ADMIN_TELEGRAM_ID`, `LOG_LEVEL`, `YTDLP_PROXY` and the `BOT_*`/`NOTES_*`
+`TELEGRAM_BOT_TOKEN`, `OWNER_TELEGRAM_ID`, `LOG_LEVEL`, `YTDLP_PROXY` and the `BOT_*`/`NOTES_*`
 operator settings from `.env` as `/opt/maxi_bot/bot.env` (0600). The Mini App container gets its
-own `miniapp.env`: `ADMIN_TELEGRAM_ID`, `LOG_LEVEL` and `MINIAPP_INIT_SECRET`, a key derived from
+own `miniapp.env`: `OWNER_TELEGRAM_ID`, `LOG_LEVEL` and `MINIAPP_INIT_SECRET`, a key derived from
 the bot token on your machine (so `python3` must be on your PATH); the token itself never reaches
 it. The Funnel sidecar gets `funnel.env` with `TS_AUTHKEY` only. It builds the image **on the
 droplet** (all deps ship manylinux wheels; 1 GB RAM + swap is enough), and runs
@@ -120,10 +120,10 @@ docker save maxi_bot:latest | ./infrastructure/ssh-gate.sh ssh docker load
 
 ## Mini App (Tailscale Funnel)
 
-The admin Mini App is published by the `funnel` sidecar at `https://maxi-bot.<tailnet>.ts.net`.
+The Mini App is published by the `funnel` sidecar at `https://maxi-bot.<tailnet>.ts.net`.
 One-time setup (yours; it needs a Tailscale account):
 
-1. Create a free Tailscale account. In the admin console under **DNS**, turn on MagicDNS and
+1. Create a free Tailscale account. In its console under **DNS**, turn on MagicDNS and
    **HTTPS Certificates**, and note the tailnet name (`tailXXXX.ts.net`).
 2. Under **Access controls**, the policy file must grant Funnel. Add
    `{"target": ["autogroup:member"], "attr": ["funnel"]}` to `nodeAttrs` if it is missing.
@@ -198,7 +198,7 @@ uv run python infrastructure/backup.py uninstall
   LaunchAgent `local.maxi-bot.backup` for this machine, carrying over `SSH_KEY` and
   `MAXI_BOT_BACKUP_DIR` from your shell.
 - **Log and alerts:** the log is `~/Library/Logs/maxi-bot-backup.log`. A macOS banner plus the bot's
-  message "⚠️ maxi-bot backup …" to the admin, at most once a day per reason, comes for:
+  message "⚠️ maxi-bot backup …" to the Owner, at most once a day per reason, comes for:
   - a failed run: from the second failure in a row, or at once when the last good Backup is over
     48 hours old (one failure right after a wake, before the network is up, says nothing);
   - a file that could not be fetched.

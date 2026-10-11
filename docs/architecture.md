@@ -65,7 +65,7 @@ interfaces/telegram_bot/src/telegram_bot/
 ├── notes_capture.py    the bot's Capture adapter: message → notes.capture.capture → settle
 ├── notes_runtime.py    NotesRuntime: Database, Classifier, background loops, notify
 ├── worker.py           FIFO queue, runs WORKFLOW.run, delivers Result
-├── miniapp/            the admin Mini App: signed JSON API + static shell (ADR-016)
+├── miniapp/            the Mini App: signed JSON API + static shell (ADR-016)
 └── ...
 
 interfaces/smoke/src/smoke/
@@ -90,9 +90,8 @@ apps/diary/
 The diary (ADR-020) has no chat side: only `telegram_bot/miniapp/api_diary.py` reaches it.
 
 Its interfaces follow the same thin-adapter rule: `telegram_bot/handlers/notes.py` and
-`notes_ui.py` parse and render, `telegram_bot/miniapp` serves the Mini App (ADR-016). The admin's single
-website link gets the usual price card with a 💾 button on top (`documents.link_handler`, a savable Path);
-invitees never see 💾.
+`notes_ui.py` parse and render, `telegram_bot/miniapp` serves the Mini App (ADR-016). The Owner's single
+website link gets the usual price card with a 💾 button on top (`documents.link_handler`, a savable Path).
 
 ## Thin-adapter rule
 

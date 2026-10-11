@@ -28,19 +28,19 @@ The Mini App needs no bot token: `MINIAPP_INIT_SECRET` stands in for the derived
 `.local/miniapp-local/` (seeded with 🧪 Items and Sections, or `--from-db-dir DIR` to copy
 `notes.sqlite3` and `telegram_bot.sqlite3`), a random key per run (never the real `.env` values),
 the server on `--port` (18083, 127.0.0.1 only) and the signed URL in `.local/miniapp_url.txt` (mode
-600). That URL carries a valid admin `initData`, so it is a credential for this run: open it, never
+600). That URL carries the test Owner's valid `initData`, so it is a credential for this run: open it, never
 paste or print it. It expires after 24 h (`auth_date`); run `up` again then. The API takes it as
 `Authorization: tma <initData>`. `down` stops the server and deletes the directory and the URL file.
 
 ```bash
 T=$(mktemp -d); SECRET=$(python3 -c 'import hashlib,hmac;print(hmac.new(b"WebAppData",b"42:TEST",hashlib.sha256).hexdigest())')
-ADMIN_TELEGRAM_ID=100 TELEGRAM_DB_PATH=$T/b.sqlite3 NOTES_DB_PATH=$T/n.sqlite3 DIARY_DB_PATH=$T/d.sqlite3 MINIAPP_INIT_SECRET=$SECRET \
+OWNER_TELEGRAM_ID=100 TELEGRAM_DB_PATH=$T/b.sqlite3 NOTES_DB_PATH=$T/n.sqlite3 DIARY_DB_PATH=$T/d.sqlite3 MINIAPP_INIT_SECRET=$SECRET \
   uv run telegram-miniapp --port 18083
 ```
 
 Sign test initData in a scratch script: `hash` is the hex HMAC-SHA256, keyed with `SECRET`, of the
 sorted `key=value` lines (every field except `hash`, `signature` included); set `auth_date` to
-now and `user` to `{"id":100,...}`. Then check `/api/usage`: no header → 401, admin → 200, another
+now and `user` to `{"id":100,...}`. Then check `/api/usage`: no header → 401, the Owner → 200, another
 user id → 403, a tampered `hash` → 401, an `auth_date` 25 h old → 401. To see the pages, open
 `http://127.0.0.1:18083/#tgWebAppData=<url-encoded initData>&tgWebAppVersion=8.0&tgWebAppPlatform=web`
 (`telegram-web-app.js` reads the hash; the app has no auth bypass). A plain browser has none of
@@ -101,12 +101,12 @@ the API answers (the snapshot). `curl -sI .../static/<build>/app.js` should say 
 ## 3. Offline bot harness (routing, cards, callbacks, no token)
 
 Drive the real `Dispatcher` with synthetic updates and a recording session. This covers "who
-handles what", button layouts, races and invitee vs admin behaviour. Anything the bot sends
+handles what", button layouts, races and the silence a stranger gets. Anything the bot sends
 comes back as a recorded Bot API call.
 
 ```python
 import os, tempfile; T = tempfile.mkdtemp()
-os.environ.update(ADMIN_TELEGRAM_ID="100", TELEGRAM_DB_PATH=f"{T}/b.sqlite3",
+os.environ.update(OWNER_TELEGRAM_ID="100", TELEGRAM_DB_PATH=f"{T}/b.sqlite3",
                   NOTES_DB_PATH=f"{T}/n.sqlite3", OPENAI_API_KEY="sk-test")
 # ↑ before importing anything from shared/telegram_bot: Settings is read at import
 
@@ -114,7 +114,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.session.base import BaseSession
 from aiogram.methods import SendMessage
 from aiogram.types import Chat, Message
-from telegram_bot import access, db
+from telegram_bot import db
 from telegram_bot.access import AccessMiddleware
 from telegram_bot import notes_runtime
 from telegram_bot.cards import CardBook
@@ -135,13 +135,13 @@ class Rec(BaseSession):
         return True
 
 db.init_db()
-db.redeem_invite(access.mint_invite(100), 300, "inv", "Inv")      # user 300 = invitee
 bot = Bot(token="42:TEST", session=(tg := Rec()))
 dp = Dispatcher(); dp["queue"] = JobQueue()
 dp["notes"] = notes_runtime.build_runtime()  # or NotesRuntime(db=..., http=fake, classifier=FakeClassifier())
 dp["cards"] = CardBook(intake=Stub())        # Stub: the Intake port below
 dp.update.outer_middleware(AccessMiddleware()); setup_routers(dp)
 # await dp.feed_update(bot, Update(update_id=1, message=Message(..., from_user=User(id=100,...))))
+# 100 is the Owner; any other id is a stranger
 ```
 
 - **Network:** stub it at the `Intake` seam. `dp["cards"] = CardBook(intake=Stub())` where
@@ -151,12 +151,12 @@ dp.update.outer_middleware(AccessMiddleware()); setup_routers(dp)
 - **Races:** start the message feed as a task, tap while the (stubbed) scrape sleeps, then
   assert on the final edit.
 - **Worth asserting on every bot change:**
-  - an invitee's card has no 💾 and its status line has no keyboard;
-  - an invitee's plain text is ignored;
-  - the admin's commands still reach their routers;
-  - a document never becomes a note;
+  - a stranger gets nothing: a message, a command, a button press and `/start <anything>` from
+    another id record no call and add no database row, and neither does anything sent in a group;
+  - the Owner's commands still reach their routers;
+  - a single website link's card has 💾; an agent document's card and a command's link card have none;
   - `routing.route(Incoming(...))` is a plain-value check, no Dispatcher needed: one assertion per
-    `Kind`, admin and invitee, including a captioned audio (`media="other"`) → `ignore`.
+    `Kind`, with no sender to pass, including a captioned audio (`media="other"`) → `ignore`.
 - **Reminders (notes ADR-0011):** the fake Classifier reads «напомни 2026-10-10 19:00» from a Note,
   an Annotation, a caption or a Transcript, so every kind of Capture can be made a Reminder offline;
   `NotesRuntime.remind_once(bot, now)` takes the clock, so a harness drives the reminder pass and

@@ -8,7 +8,7 @@ product vocabulary.
 - **Workflow** — a package under `workflows/` that turns a source into a deliverable
   for money. Exposed by exactly one descriptor, `WORKFLOW` (`shared.job.Workflow`),
   from its `runtime.py`. Composition lives in `graph.py`; steps are **nodes**.
-- **Source** — what a user hands in: a `DocumentSource` (bytes + filename: PDF, DOCX,
+- **Source** — what the Owner hands in: a `DocumentSource` (bytes + filename: PDF, DOCX,
   Markdown, text, or a scraped article) or a `LinkSource` (a YouTube URL). A
   workflow declares which kinds it **accepts**.
 - **Preview** — the free, unbilled look at a source: title, character and chapter
@@ -31,6 +31,8 @@ product vocabulary.
 - **Registry entry** — an interface's presentation record for one workflow: label,
   short label, which settings to show, and the settings → config builder. Never
   behaviour.
+- **Owner** — the one Telegram account the bot answers and the Mini App serves, named by
+  `OWNER_TELEGRAM_ID`. Everyone else gets no reply (ADR-022). Avoid: admin, user, invitee.
 - **Job** — the bot's queue item: who, which workflow, its config and preview, and the
   status message to edit. One job runs at a time (ADR-008).
 - **Estimate card** — the bot message listing priced actions for a pending source,
@@ -39,24 +41,24 @@ product vocabulary.
   chat; said as "⏭ Replaced…" if it was still pricing), *closed* (Cancel or 💾 took it) and
   *job* (Run accepted). Only a card that owns the chat's pending job can be run, re-priced
   or sent to Settings.
-- **Draft** — the admin's text message held by its Estimate card until 💾 saves it as a
+- **Draft** — the Owner's text message held by its Estimate card until 💾 saves it as a
   Capture, Cancel or Run drops it, or a newer message supersedes the card
   (`telegram_bot.notes_capture.Draft`). Avoid: pending note, saved text.
 - **Path** — the one thing an incoming bot message becomes: a card (for an agent document, or
-  a link; the admin's single website link is savable), a Capture (text, file or voice; admin
-  only), an "unsupported file type" answer, or nothing. Decided in one place,
+  a link; a single website link is savable), a Capture (text, file or voice), or nothing.
+  Decided in one place,
   `telegram_bot/routing.py`. Avoid: route (noun), branch, handler choice.
 - **Card book** — the bot's in-memory record of every chat's Estimate cards: which card is
   live, which card the chat's one pending job belongs to, and what 💾 would save for it
   (`telegram_bot/cards.py`). Lost on restart, which is why old buttons answer "expired".
   Avoid: pending dict, drafts, card state.
-- **Savable** — the opaque attachment the admin's card carries for 💾; for notes it is a
+- **Savable** — the opaque attachment a card carries for 💾; for notes it is a
   Draft. The card never looks inside it. Avoid: draft (when speaking of the card).
 - **Smoke runner** — `interfaces/smoke`, the terminal adapter over the same contract
   and the workflow smoke surface (ADR-001; the other checks are in `docs/verifying.md`).
-- **Mini App** — the admin's Telegram Mini App (`telegram_bot/miniapp`, ADR-016): a static shell
+- **Mini App** — the Owner's Telegram Mini App (`telegram_bot/miniapp`, ADR-016): a static shell
   plus a JSON API over notes, the diary and usage, opened from the 📒 menu button. Every API call carries
-  Telegram-signed **initData**, and only `ADMIN_TELEGRAM_ID` passes.
+  Telegram-signed **initData**, and only `OWNER_TELEGRAM_ID` passes.
 - **Place** — one of the Mini App's two top-level destinations, chosen in its place menu: notes
   («Заметки») or the diary («Дневник») (ADR-021). «Расходы» is reached from the same menu but is a nested
   screen, not a Place. Avoid: tab, app (for the slot in the UI), section (a Section is a notes term).

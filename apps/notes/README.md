@@ -1,8 +1,8 @@
 # notes
 
-The admin's "save for later" store: links, text, files and voice messages sent to the Telegram bot
+The Owner's "save for later" store: links, text, files and voice messages sent to the Telegram bot
 are saved at once, enriched (title, author, caption, thumbnail, a voice's transcript), filed into Sections with a Russian Gist, and sorted
-in the admin Mini App (ADR-016). Merged in from the standalone `maxi-notes` repo (ADR-015).
+in the Mini App (ADR-016). Merged in from the standalone `maxi-notes` repo (ADR-015).
 
 - Vocabulary: `CONTEXT.md` (separate from the repo glossary: **Source** means something else here)
 - Decisions: `docs/decisions/0001–0012` · Spec: `docs/spec.md` · Tickets: `docs/tickets/`
@@ -12,7 +12,7 @@ in the admin Mini App (ADR-016). Merged in from the standalone `maxi-notes` repo
 | Where | What |
 |---|---|
 | `apps/notes/src/notes/` | domain (`domain/`: items, sections, `clock`, `lists`, `reminders`, dashboard), `capture.py` (one message in, one Item out), sqlite store (`db.py`), Enrichment (`enrich/`), Classifier port (`classify/`), `sweeper.py`, `smoke.py` |
-| `interfaces/telegram_bot/…/handlers/documents.py` | the admin's single website link gets a card with 💾 (`link_handler`, a savable Path) |
+| `interfaces/telegram_bot/…/handlers/documents.py` | a single website link gets a card with 💾 (`link_handler`, a savable Path) |
 | `interfaces/telegram_bot/…/handlers/notes.py` | the Capture Paths (text, file, voice), 💾 on a card, Reminder buttons; 🤖 and ↩️ only for buttons on old messages |
 | `interfaces/telegram_bot/…/notes_capture.py` | the bot's Capture adapter: message → `notes.capture.capture` → reaction, Due line, background Enrichment |
 | `interfaces/telegram_bot/…/notes_runtime.py` | `NotesRuntime`: the Database, Classifier and the background loops (enrichment, sweeper, show, reminders) |
@@ -28,7 +28,7 @@ uv run notes-smoke --voice memo.ogg               # transcribe + file a voice fi
 uv run notes-smoke --now "2026-10-07 20:58" --zone Europe/Warsaw "напомни завтра"   # prints the Due
 uv run notes-smoke http://169.254.169.254/         # the SSRF guard refuses it
 uv run notes-thumbs                                # give Items without a Thumbnail one (ADR-0012), safe to rerun
-uv run telegram-bot                                # 💾 on the card for ADMIN_TELEGRAM_ID
+uv run telegram-bot                                # Captures and 💾 for OWNER_TELEGRAM_ID
 uv run telegram-miniapp                            # http://127.0.0.1:8083, opened from Telegram
 ```
 

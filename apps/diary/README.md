@@ -1,8 +1,8 @@
 # diary
 
-The admin's diary of what got done, modelled on Хулендарь (hoolendar.ru): short Entries per Day, a
+The Owner's diary of what got done, modelled on Хулендарь (hoolendar.ru): short Entries per Day, a
 Mark on the Day (💀 😐 🔥), and Summaries where the best Entries are raised from a Week into its Month
-and Year. Reached only from the admin Mini App's «Дневник» Place; nothing in the chat writes to it (ADR-020, ADR-021).
+and Year. Reached only from the Mini App's «Дневник» Place; nothing in the chat writes to it (ADR-020, ADR-021).
 
 - Vocabulary: `CONTEXT.md` (Day, Entry, Mark, Level, Raise, Week/Month/Year, Streak, Dashboard, Summary)
 - Decision: `docs/decisions/020-diary-app-and-per-app-dashboards.md`

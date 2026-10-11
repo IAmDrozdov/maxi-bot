@@ -9,8 +9,8 @@ the notes path or the deploy. Shorthand: `telegram_bot/x.py` and `handlers/x.py`
 
 | Service | Entry point | Does | Reads / writes |
 |---|---|---|---|
-| `bot` | `telegram-bot` (`telegram_bot/__main__.py`) | Telegram long polling. Answers users, prices cards, runs one job at a time (`worker.worker_loop`), and runs notes enrichment plus the notes sweeper, show loop, reminder loop and, once per start, the Thumbnail backfill | `telegram_bot.sqlite3` rw, `notes.sqlite3` rw, OpenAI, YouTube, the web |
-| `miniapp` | `telegram-miniapp` (`telegram_bot/miniapp`) | The admin Mini App: a public static shell plus a signed JSON API for notes, the diary and usage, `127.0.0.1:8083` (ADR-016, ADR-020, ADR-021) | `telegram_bot.sqlite3` read, `notes.sqlite3` rw, `diary.sqlite3` rw (the only process that opens it) |
+| `bot` | `telegram-bot` (`telegram_bot/__main__.py`) | Telegram long polling. Answers the Owner, prices cards, runs one job at a time (`worker.worker_loop`), and runs notes enrichment plus the notes sweeper, show loop, reminder loop and, once per start, the Thumbnail backfill | `telegram_bot.sqlite3` rw, `notes.sqlite3` rw, OpenAI, YouTube, the web |
+| `miniapp` | `telegram-miniapp` (`telegram_bot/miniapp`) | The Mini App: a public static shell plus a signed JSON API for notes, the diary and usage, `127.0.0.1:8083` (ADR-016, ADR-020, ADR-021) | `telegram_bot.sqlite3` read, `notes.sqlite3` rw, `diary.sqlite3` rw (the only process that opens it) |
 | `funnel` (profile) | `tailscale/tailscale` | Publishes `miniapp` over HTTPS through Tailscale Funnel, outbound only (ADR-016) | `tsstate` volume |
 | `warp` (profile) | wireproxy | SOCKS5 egress for yt-dlp only (ADR-014) | — |
 | — | `smoke`, `notes-smoke` | Terminal-only reference runs (ADR-001) | local files |
@@ -35,30 +35,28 @@ then offered to the document agents. Plain text reaches them only as a `.txt` fi
 
 ## Who gets what (the Path)
 
-Updates pass through `AccessMiddleware` first: private chats only, admin or whitelisted users
-only, plus `/start <invite>`. Commands and callbacks then match their own routers. A plain message
+Updates pass through `AccessMiddleware` first: only the Owner's private chat gets through. Every
+other update is dropped with no reply, no database read and no log line above debug (ADR-022).
+Commands and callbacks then match their own routers. A plain message
 becomes one **Path**, decided by `routing.route` (a pure function of `routing.Incoming`, built by
 `routing.incoming_of`); each handler takes the Paths it names through `routing.takes(...)`, so
 router order is not part of the rule. One row per `Kind`:
 
-| Kind | Message | Who | Taken by |
-|---|---|---|---|
-| `document_card` | an agent document (.pdf .docx .md .markdown .txt) → card, never 💾 | all | `documents.document_handler` |
-| `unsupported_document` | any other document → "Unsupported file type…" | invitee | `documents.document_handler` |
-| `link_card` | text with a URL → card; the admin's single website URL is *savable* (card with 💾) | all (💾: admin) | `documents.link_handler` |
-| `capture_text` | text with no URL, several, or exactly one Instagram / YouTube / TikTok URL → a Note or a Link, no card | admin | `notes.direct_text_handler` |
-| `capture_file` | a photo, video or non-agent document → a File | admin | `notes.file_handler` |
-| `capture_voice` | a voice or round video → a Voice, transcribed in Enrichment | admin | `notes.voice_handler` |
-| `ignore` | everything else: an invitee's plain text or media, a command, a sticker, audio… | — | nothing |
+| Kind | Message | Taken by |
+|---|---|---|
+| `document_card` | an agent document (.pdf .docx .md .markdown .txt) → card, never 💾 | `documents.document_handler` |
+| `link_card` | text with exactly one website URL → a *savable* card (with 💾); a command that carries a URL → a card without 💾 | `documents.link_handler` |
+| `capture_text` | text with no URL, several, or exactly one Instagram / YouTube / TikTok URL → a Note or a Link, no card | `notes.direct_text_handler` |
+| `capture_file` | a photo, video or non-agent document → a File | `notes.file_handler` |
+| `capture_voice` | a voice or round video → a Voice, transcribed in Enrichment | `notes.voice_handler` |
+| `ignore` | everything else: a command, a sticker, audio… | nothing |
 
-Other routers: `start` (`/start`, `/help`; the admin's help adds a notes line), `admin`
-(`/invite`, `/users`, `/revoke`), `settings_menu` and `status` (`/settings`, `/status`, `/cancel`).
+Other routers: `start` (`/start` and `/help`, one help text), `settings_menu` and `status`
+(`/settings`, `/status`, `/cancel`).
 `notes` also takes the callbacks `JobCB save`, `NotesCB offer` / `restore` / `done` (a Reminder's
 ✅ Готово marks the Item done and edits the message to «✅ сделано»). Router order still matters
 for commands that carry text (`/settings https://x`, `/help https://x`) and for
 `MenuCB(page='job')`, which `documents` claims.
-
-Plain text without a URL from an invitee is `ignore`.
 
 Callback-data prefixes (`keyboards.py`, `notes_ui.py`, max 64 bytes): `m` menu, `o` option
 picker, `s` set value, `t` try voice/model, `j` job actions (`run`/`settings`/`cancel`/`save`),
@@ -78,20 +76,19 @@ offline harness.
    per agent, then ⚙️ Settings and ✖️ Cancel. The job sits in the book's pending map, **one per
    chat**.
 4. **Outcome:**
-   - **Run** (*job*) puts a `Job` on the FIFO `JobQueue` (max 5 per user, one running at a time).
+   - **Run** (*job*) puts a `Job` on the FIFO `JobQueue` (max 5 queued or running, one running at a time).
      The worker edits the card with progress and delivers files or voice messages.
    - **Cancel** *closes* the card.
    - **💾** takes the card's savable (a `notes_capture.Draft`), saves one Item, deletes the card
-     and reacts on the admin's original message; a failed save gives the savable back.
+     and reacts on the Owner's original message; a failed save gives the savable back.
    - **Settings → Back** re-prices the same card.
 
 Guards: only a card that owns the chat's pending job can be run, re-priced or sent to
 Settings. A card closed while it was still pricing is never overwritten. A card *superseded* by a
 newer message is edited to "⏭ Replaced…" if it was still pricing, and keeps 💾.
 
-Spend gates (`_spend_block_reason`): a per-job cap (`BOT_MAX_JOB_COST_USD`) applies to everyone,
-including the admin. The rolling 24 h cap (`BOT_DAILY_USER_COST_LIMIT_USD`) applies to everyone
-except the admin.
+Spend gate (`_spend_block_reason`): the per-job cap (`BOT_MAX_JOB_COST_USD`), checked at Run on the
+re-priced estimate. There is no daily cap (ADR-022).
 
 ## Notes path (`apps/notes`, ADR-015)
 
@@ -102,7 +99,7 @@ Item per Capture, `capture_link` with dedupe for exactly one URL, else a Note wi
 a File or a Voice. `notes_capture.settle` then shows what the Capture decided (the Due line, the
 reaction) and `NotesRuntime.enrich_later` (`telegram_bot/notes_runtime.py`) starts
 `notes.enrich.pipeline.enrich_item`. The bot sends no message of its own (a Reminder is the exception): the Acknowledgement
-is its one reaction on the admin's message (`notes_ui.react`): ✍ working, 👌 in notes, 👎 take a
+is its one reaction on the Owner's message (`notes_ui.react`): ✍ working, 👌 in notes, 👎 take a
 look (notes ADR-0009). A duplicate gets 👌 at once with no Enrichment (👎 if its Enrichment had
 failed), and keeps its Status, `done` included, unless its own words ask for a reminder (below). A
 Capture that throws, or notes being down, gets 👎. The bot writes a message for Reminders only
@@ -143,10 +140,10 @@ last `tz` (`clock.owner_zone`, UTC until the app first opens; every Due is store
 
 Language: the bot UI is English; notes texts and the Mini App are Russian.
 
-## Admin Mini App (`telegram_bot/miniapp`, ADR-016)
+## Mini App (`telegram_bot/miniapp`, ADR-016)
 
-While `BOT_MINIAPP_URL` is set, the bot gives the admin's chat a `📒` menu button
-(`__main__.set_admin_menu_button`, at startup, for that chat only). It opens
+While `BOT_MINIAPP_URL` is set, the bot gives the Owner's chat a `📒` menu button
+(`__main__.set_owner_menu_button`, at startup, for that chat only). It opens
 the `miniapp` service through the funnel sidecar: a static shell (`miniapp/static`, vanilla JS)
 that calls `/api/usage`, `/api/notes/*` and `/api/diary/*`. One 48 px title row (`nav.js`) is all the
 permanent navigation (ADR-021): a button naming the Place and its Mode («Заметки · записи ▾») and, to its
@@ -242,14 +239,14 @@ while it is in Other alone; once it is anywhere else, re-enrich keeps its Sectio
 
 Every `/api` call carries `Authorization: tma <initData>`. `miniapp/auth.py` checks Telegram's
 HMAC against `MINIAPP_INIT_SECRET`, requires `auth_date` under 24 h and admits only
-`ADMIN_TELEGRAM_ID` (401 or 403). The API only parses and serialises; the rules stay in
+`OWNER_TELEGRAM_ID` (401 or 403). The API only parses and serialises; the rules stay in
 `apps/notes`. A re-enrich from the app flips the Item to `pending` and the bot's sweeper does
 the work. Edits made in the app do not change the reaction in the chat.
 
 ## State that lives only in memory
 
 These are lost on every restart, and a deploy is a restart:
-- The card book (`dp["cards"]`): pending cards (TTL 30 min, 60 MB cap), savables (the admin's
+- The card book (`dp["cards"]`): pending cards (TTL 30 min, 60 MB cap), savables (the Owner's
   Drafts), and the live/closed marks.
 - The job queue.
 
@@ -264,9 +261,9 @@ up anything left `pending` from sqlite.
     validation kills *every* process, so prefer plain `str`/`int` fields);
   - `.env.example`;
   - the allow-list regex in `infrastructure/deploy.sh` (only `OPENAI_API_KEY`,
-    `TELEGRAM_BOT_TOKEN`, `ADMIN_TELEGRAM_ID`, `LOG_LEVEL`, `YTDLP_PROXY`, `BOT_*` and `NOTES_*`
+    `TELEGRAM_BOT_TOKEN`, `OWNER_TELEGRAM_ID`, `LOG_LEVEL`, `YTDLP_PROXY`, `BOT_*` and `NOTES_*`
     reach the droplet as `bot.env`). Two files go up separately: `miniapp.env`
-    (`ADMIN_TELEGRAM_ID`, `LOG_LEVEL` and the derived `MINIAPP_INIT_SECRET`) and `funnel.env`
+    (`OWNER_TELEGRAM_ID`, `LOG_LEVEL` and the derived `MINIAPP_INIT_SECRET`) and `funnel.env`
     (`TS_AUTHKEY`). A variable the Mini App needs goes into the first;
   - the README tables.
   Compose `environment:` overrides `bot.env`. `DIARY_DB_PATH` is set only there, for `miniapp`: the bot
@@ -279,7 +276,7 @@ up anything left `pending` from sqlite.
   Workspace packages are installed editable, so templates and static files are served from
   `/app/<path>` rather than site-packages.
 - **A router, filter or Path:** a new message kind is a `Kind` in `telegram_bot/routing.py` plus a handler that `takes` it; the order in `setup_routers` only matters for commands and `MenuCB`. Keep `start` first, and keep each
-  router's `allowed_user_filter`.
+  router's `owner_filter`.
 - **A new agent:** `.skills/create-workflow.md`. It appears on cards through
   `telegram_bot/registry.py`; there are no id switches.
 

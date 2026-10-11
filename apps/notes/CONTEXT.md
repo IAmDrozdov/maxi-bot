@@ -1,9 +1,9 @@
 # Notes — glossary
 
 A single owner's "save for later" store: things captured from a phone through the maxi-bot
-Telegram bot, filed into Sections automatically, looked through and corrected in the admin Mini App.
+Telegram bot, filed into Sections automatically, looked through and corrected in the Mini App.
 Kept apart from the repo-level `CONTEXT.md` because some words mean something else there
-(**Source** most of all). Here, the **Owner** is the maxi-bot admin.
+(**Source** most of all).
 
 ## Language
 
