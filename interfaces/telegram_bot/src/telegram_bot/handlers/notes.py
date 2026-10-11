@@ -13,9 +13,9 @@ from notes.capture import Origin
 from notes.domain import items
 from shared.obs import get_logger
 
-from .. import notes_capture, notes_ui, routing
+from .. import db, notes_capture, notes_ui, routing
 from ..cards import CardBook
-from ..keyboards import JobCB, editable
+from ..keyboards import JobCB, ResultCB, editable
 from ..notes_capture import Draft, draft_of, links_of
 from ..notes_runtime import NotesRuntime
 from ..notes_ui import NotesCB
@@ -98,6 +98,47 @@ async def save_handler(
         await notes_capture.settle(notes, bot, card.chat.id, draft.message_id, captured, shown=None)
     elif captured.enrich:
         notes.enrich_later(bot, captured.item.id)
+    await callback.answer()
+
+
+@router.callback_query(ResultCB.filter())
+async def result_save_handler(
+    callback: CallbackQuery, callback_data: ResultCB, bot: Bot, notes: NotesRuntime | None
+) -> None:
+    """💾 under a delivered result: the message becomes a BotResult; nothing is read from memory (ADR-0013)."""
+    message = editable(callback)
+    if message is None:
+        await callback.answer("Бот больше не видит это сообщение.", show_alert=True)
+        return
+    if notes is None:
+        await callback.answer("Заметки сейчас недоступны — нажми позже.", show_alert=True)
+        return
+    try:
+        job = await asyncio.to_thread(db.job_title, callback_data.job)
+    except Exception:  # an unreadable job log is no row: the title comes from the message
+        log.exception("notes: job log row %s could not be read", callback_data.job)
+        job = None
+    try:
+        payload = notes_capture.bot_result_of(message, job)
+        if payload is None:
+            await callback.answer("В этом сообщении нет файла.", show_alert=True)
+            return
+        captured = await notes_capture.capture(
+            notes.db,
+            payload,
+            Origin(message.chat.id, message.message_id),
+            classifier=notes.classifier,
+        )
+    except Exception:
+        log.exception("notes: saving result %s failed", message.message_id)
+        await callback.answer("Не получилось сохранить — нажми ещё раз.", show_alert=True)
+        return
+    with contextlib.suppress(TelegramAPIError):  # a second tap finds the button gone already
+        await message.edit_reply_markup(reply_markup=None)
+    if captured.outcome == "existing":
+        await callback.answer("Уже в заметках")
+        return
+    await notes_ui.acknowledge(bot, captured.item)
     await callback.answer()
 
 

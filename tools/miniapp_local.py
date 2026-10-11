@@ -63,7 +63,7 @@ def launch_url(port: int, secret: str) -> str:
 
 
 def seed_notes(path: Path) -> None:
-    """A few 🧪 Sections and Items across statuses, a Link, a Note and an overdue reminder."""
+    """A few 🧪 Sections and Items across statuses: Links, Notes, an overdue reminder, three BotResults."""
     from notes.db import Database
     from notes.domain import items, reminders, sections
 
@@ -99,6 +99,25 @@ def seed_notes(path: Path) -> None:
     reminders.fill_from_filing(
         db, stored, (now - timedelta(days=1)).replace(tzinfo=None), "UTC", now=now
     )
+    results = (  # title, Workflow id (the last one is unknown to the page), file name, mime, size, duration
+        ("🧪 Перевод статьи", "doc_translator", "article.ru.md", "text/markdown", 348_160, None),
+        ("🧪 Аудио статьи", "pdf_tts", None, "audio/ogg", 2_400_000, 754),
+        ("🧪 Новый воркфлоу", "new_flow", "notes.txt", "text/plain", 512, None),
+    )
+    for n, (title, workflow, name, mime, size, duration) in enumerate(results):
+        items.capture_bot_result(
+            db,
+            title=title,
+            workflow=workflow,
+            file_id=f"local-result-{n}",
+            file_name=name,
+            file_mime=mime,
+            file_size=size,
+            duration_s=duration,
+            chat_id=TEST_OWNER_ID,
+            message_id=9000 + n,
+            now=now - timedelta(minutes=n),
+        )
 
 
 def seed_diary(path: Path) -> None:

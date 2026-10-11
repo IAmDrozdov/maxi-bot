@@ -64,7 +64,7 @@ DbDep = Annotated[Database, Depends(get_db)]
 # Item fields the page never reads: bookkeeping, or a cover the Thumbnail replaced (ADR-019).
 HIDDEN_FIELDS = frozenset(
     {
-        "url_normalized", "image_url", "file_id", "file_size", "done_at", "enrichment_attempts",
+        "url_normalized", "image_url", "file_id", "done_at", "enrichment_attempts",
         "tg_chat_id", "tg_ack_message_id", "show_requested_at", "reminded_at", "updated_at",
         "sections",
     }

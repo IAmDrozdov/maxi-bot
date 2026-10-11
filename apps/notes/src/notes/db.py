@@ -72,6 +72,8 @@ CREATE INDEX IF NOT EXISTS items_enrich ON items(enrichment_status, next_enrich_
 CREATE INDEX IF NOT EXISTS items_show
     ON items(show_requested_at) WHERE show_requested_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS items_due ON items(due_at) WHERE due_at IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS items_bot_result
+    ON items(tg_chat_id, tg_message_id) WHERE kind = 'bot_result';
 
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,

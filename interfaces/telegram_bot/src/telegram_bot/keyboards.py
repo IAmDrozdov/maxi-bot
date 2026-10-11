@@ -138,6 +138,18 @@ def keep_menu(key_id: int, idx: int) -> InlineKeyboardMarkup:
 SAVE_LABEL = "💾 В заметки"
 
 
+class ResultCB(CallbackData, prefix="r"):
+    """💾 under a delivered result: the job-log row id and nothing else (notes ADR-0013)."""
+
+    job: int
+
+
+def result_menu(job_row_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=SAVE_LABEL, callback_data=ResultCB(job=job_row_id))
+    return builder.as_markup()
+
+
 def draft_menu() -> InlineKeyboardMarkup:
     """The immediate answer to a savable link while the card is still being priced."""
     builder = InlineKeyboardBuilder()

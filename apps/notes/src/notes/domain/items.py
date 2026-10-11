@@ -65,6 +65,7 @@ class Item:
     file_size: int | None
     duration_s: int | None
     transcript: str | None
+    workflow: str | None  # a BotResult's Workflow id, as text
     sender: str | None
     status: Status
     done_at: str | None
@@ -111,6 +112,7 @@ def row_to_item(row: sqlite3.Row, filing: tuple[Section, ...]) -> Item:
         file_size=row["file_size"],
         duration_s=row["duration_s"],
         transcript=row["transcript"],
+        workflow=row["workflow"],
         sender=row["sender"],
         status=row["status"],
         done_at=row["done_at"],
@@ -253,6 +255,52 @@ def capture_voice(
         return fetch(conn, item_id)
 
 
+def capture_bot_result(
+    db: Database,
+    *,
+    title: str,
+    workflow: str | None,
+    file_id: str,
+    file_name: str | None,
+    file_mime: str | None,
+    file_size: int | None,
+    duration_s: int | None,
+    chat_id: int,
+    message_id: int,
+    now: datetime | None = None,
+) -> Capture:
+    """Save a BotResult once per result message: in From the bot, with no Enrichment (ADR-0013)."""
+    with db.session() as conn:
+        # OR IGNORE against the unique (chat, message) makes a double tap race-free, as for a Link.
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO items(kind, title, workflow, file_id, file_name, file_mime, "
+            "file_size, duration_s, enrichment_status, tg_chat_id, tg_message_id, created_at, "
+            "updated_at) VALUES ('bot_result', ?, ?, ?, ?, ?, ?, ?, 'skipped', ?, ?, ?, ?)",
+            (
+                title,
+                workflow,
+                file_id,
+                file_name,
+                file_mime,
+                file_size,
+                duration_s,
+                chat_id,
+                message_id,
+                clock.stamp(now),
+                clock.stamp(now),
+            ),
+        )
+        if cur.rowcount == 1:
+            item_id = int(cur.lastrowid or 0)
+            refile(conn, item_id, [])
+            return Capture(fetch(conn, item_id), "new")
+        row = conn.execute(
+            f"{ITEM_SELECT} WHERE kind='bot_result' AND tg_chat_id=? AND tg_message_id=?",
+            (chat_id, message_id),
+        ).fetchone()
+        return Capture(row_to_item(row, filing_of(conn, int(row["id"]))), "existing")
+
+
 def _keep_preview(
     conn: sqlite3.Connection, item_id: int, preview: tuple[bytes, str] | None
 ) -> None:
@@ -299,10 +347,11 @@ def get_thumb(db: Database, item_id: int) -> tuple[bytes, str, str] | None:
 
 
 def missing_thumbs(db: Database) -> list[Item]:
-    """Items that have no Thumbnail yet, oldest first."""
+    """Items that have no Thumbnail yet, oldest first; a BotResult never gets one (ADR-0013)."""
     with db.session(readonly=True) as conn:
         rows = conn.execute(
-            f"{ITEM_SELECT} WHERE id NOT IN (SELECT item_id FROM item_thumbs) ORDER BY id"
+            f"{ITEM_SELECT} WHERE kind != 'bot_result' "
+            "AND id NOT IN (SELECT item_id FROM item_thumbs) ORDER BY id"
         ).fetchall()
         return rows_to_items(conn, rows)
 
@@ -410,12 +459,13 @@ def mark_failed(db: Database, item_id: int, error: str, *, now: datetime | None 
 
 
 def request_reenrich(db: Database, item_id: int, *, now: datetime | None = None) -> Item:
-    """Start Enrichment over, immediately due for the sweeper."""
+    """Start Enrichment over, immediately due for the sweeper; a BotResult has none and stays as it is."""
     with db.session() as conn:
         conn.execute(
             "UPDATE items SET enrichment_status='pending', enrichment_attempts=0, "
             "enrichment_error=NULL, next_enrich_at=?, updated_at=?, "
-            "transcript=CASE WHEN kind='voice' THEN NULL ELSE transcript END WHERE id=?",
+            "transcript=CASE WHEN kind='voice' THEN NULL ELSE transcript END "
+            "WHERE id=? AND kind != 'bot_result'",
             (clock.stamp(now), clock.stamp(now), item_id),
         )
         return fetch(conn, item_id)

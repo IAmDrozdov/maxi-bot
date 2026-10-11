@@ -194,6 +194,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   color: var(--text);
 }
 .chip.filter { min-height: 36px; padding: 4px 14px; flex: none; }
+.chip.filter.locked { cursor: default; }
+.chip.filter.locked::after { content: "🔒"; margin-left: 6px; }
 .chip.on { background: var(--chip, var(--accent)); border-color: var(--chip, var(--accent)); color: #fff; }
 .chip.link { color: var(--link); }
 

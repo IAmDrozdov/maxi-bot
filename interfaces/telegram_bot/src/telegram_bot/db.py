@@ -171,6 +171,13 @@ def finish_job(
         )
 
 
+def job_title(job_id: int) -> tuple[str, str] | None:
+    """(Workflow id, title) of a job-log row; None when the log has no such row."""
+    with _connect(readonly=True) as conn:
+        row = conn.execute("SELECT agent, filename FROM jobs WHERE id=?", (job_id,)).fetchone()
+    return (row["agent"], row["filename"]) if row else None
+
+
 # --- ETA samples -----------------------------------------------------------
 
 

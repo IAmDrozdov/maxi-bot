@@ -31,6 +31,8 @@ import {
   itemTitle,
   originOf,
   reenrichToast,
+  resultLine,
+  resultMark,
   sectionLabel,
   toLocalInput,
 } from "./cards.js";
@@ -172,10 +174,17 @@ export function openDetail({ list, host, item, fresh = false, focus = null, ...h
     const sectionRow = el("div", "chip-row");
     const sectionButtons = new Map();
     for (const section of hooks.sections) {
-      if (section.slug === FROM_BOT && state.detail.kind !== "bot_result") continue;
-      const chip = el("button", "chip filter", sectionLabel(section));
+      // From the bot is a BotResult's own Section, and only its: it never leaves it and is never in Other.
+      const result = state.detail.kind === "bot_result";
+      if (section.slug === (result ? OTHER : FROM_BOT)) continue;
+      const locked = section.slug === FROM_BOT;
+      const chip = el("button", locked ? "chip filter locked" : "chip filter", sectionLabel(section));
       chip.style.setProperty("--chip", section.color);
-      chip.onclick = () => (state.sectionsOpen ? toggleSection(section.slug) : showSections(true));
+      if (locked) chip.setAttribute("aria-disabled", "true");
+      chip.onclick = () => {
+        if (!state.sectionsOpen) showSections(true);
+        else if (!locked) toggleSection(section.slug);
+      };
       sectionButtons.set(section.slug, chip);
       sectionRow.append(chip);
     }
@@ -219,7 +228,7 @@ export function openDetail({ list, host, item, fresh = false, focus = null, ...h
   function menuItems() {
     const items = [];
     if (state.detail.tg_message_id) items.push({ icon: "💬", label: "Открыть в чате", run: showInChat });
-    if (state.detail.enrichment_status !== "pending") {
+    if (state.detail.enrichment_status !== "pending" && state.detail.kind !== "bot_result") {
       items.push({ icon: "↻", label: "Разобрать заново", run: reenrich });
     }
     if (items.length) items.push({ sep: true });
@@ -340,6 +349,7 @@ export function openDetail({ list, host, item, fresh = false, focus = null, ...h
     nodes.push(item.kind === "link" && isHttp(item.url) ? externalLink(item, title) : el("h2", "title", title));
     const origin = originOf(item);
     if (origin) nodes.push(el("div", "origin", origin));
+    if (item.kind === "bot_result") nodes.push(el("div", "origin", `${resultMark(item)} ${resultLine(item)}`));
     if (item.gist) nodes.push(el("div", "gist", item.gist));
     nodes.push(el("div", "hint", "Сохранено " + fmtDate(item.created_at) + (item.status === "done" ? " · ✓ готово" : "")));
     if (["pending", "failed"].includes(item.enrichment_status)) nodes.push(enrichmentBadge(item));

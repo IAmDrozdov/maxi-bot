@@ -1,4 +1,4 @@
-"""Capture: the Owner's message in, exactly one Item out, and what to acknowledge (ADR-0006, 0009, 0010, 0011)."""
+"""Capture: the Owner's message in, exactly one Item out, and what to acknowledge (ADR-0006, 0009, 0010, 0011, 0013)."""
 
 from __future__ import annotations
 
@@ -26,6 +26,8 @@ log = get_logger(__name__)
 # 5. A store failure raises and nothing was saved. Once committed nothing raises: an unreadable Due is None.
 # 6. Store calls run in threads, the Classifier (duplicates only) is awaited; no module-level state.
 # 7. `now` pins created_at and the "is the Due ahead" check; default the current time.
+# 8. A BotResult is its result message, so the Origin must name it; Captured twice it is "existing". It is
+#    filed in From the bot and its Enrichment is skipped: Acknowledgement saved, enrich False, no Due (ADR-0013).
 
 # What the reaction on the Capture message should say: wait, it is in notes, take a look (CONTEXT: Acknowledgement).
 Acknowledgement = Literal["wait", "saved", "look"]
@@ -53,7 +55,20 @@ class Attachment:
     speech: bool = False  # True: a voice or round video; it becomes a Voice
 
 
-Payload = Text | Attachment
+@dataclass(frozen=True)
+class BotResult:
+    """A result the bot delivered, put aside from its own message: the file's facts, a title, the Workflow id."""
+
+    file_id: str
+    title: str
+    workflow: str | None  # plain text to notes, which do not know what a Workflow is
+    mime: str | None = None
+    size: int | None = None
+    file_name: str | None = None
+    duration_s: int | None = None
+
+
+Payload = Text | Attachment | BotResult
 
 
 @dataclass(frozen=True)
@@ -92,6 +107,25 @@ async def capture(
         "now": now,
     }
     due: datetime | None = None
+    if isinstance(payload, BotResult):
+        if origin.chat_id is None or origin.message_id is None:
+            raise ValueError("a BotResult is its result message: the Origin must name it")
+        got = await asyncio.to_thread(
+            items.capture_bot_result,
+            db,
+            title=payload.title,
+            workflow=payload.workflow,
+            file_id=payload.file_id,
+            file_name=payload.file_name,
+            file_mime=payload.mime,
+            file_size=payload.size,
+            duration_s=payload.duration_s,
+            chat_id=origin.chat_id,
+            message_id=origin.message_id,
+            now=now,
+        )
+        log.info("notes: capture bot_result %s → item %s", got.outcome, got.item.id)
+        return Captured(got.item, got.outcome, "saved", None, enrich=False)
     if isinstance(payload, Attachment):
         if payload.speech:
             item = await asyncio.to_thread(

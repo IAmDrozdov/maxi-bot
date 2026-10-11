@@ -17,6 +17,18 @@ export function fmtDuration(seconds) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+// A BotResult (notes ADR-0013): 🔊 for audio, 📄 otherwise, and one line naming the Workflow that made it and
+// how long or how big it is. A Workflow id this page does not know shows as it is.
+const WORKFLOWS = { doc_translator: "перевод", pdf_tts: "аудио", yt_dub: "озвучка" };
+const isAudio = (item) => (item.file_mime || "").startsWith("audio/");
+const fmtSize = (bytes) =>
+  bytes == null ? "" : bytes < 1048576 ? `${Math.max(1, Math.round(bytes / 1024))} КБ` : `${(bytes / 1048576).toFixed(1)} МБ`;
+export const resultMark = (item) => (isAudio(item) ? "🔊" : "📄");
+export const resultLine = (item) =>
+  [WORKFLOWS[item.workflow] || item.workflow, isAudio(item) && item.duration_s ? fmtDuration(item.duration_s) : fmtSize(item.file_size)]
+    .filter(Boolean)
+    .join(" · ");
+
 export function fmtDate(ts) {
   const date = parseTs(ts);
   return date ? date.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" }) : "—";
@@ -64,6 +76,7 @@ const clip = (text, n) => (text.length > n ? text.slice(0, n).trimEnd() + "…" 
 
 // A row's second line: where the Item came from, then the bot's gist; a text note shows the Owner's own words.
 function subOf(item, title) {
+  if (item.kind === "bot_result") return resultLine(item);
   const lead = [
     originOf(item),
     item.kind === "file" && item.file_name && item.file_name !== title && "📎 " + item.file_name,
@@ -123,7 +136,8 @@ export function row(item, opts = {}) {
   }
 
   const full = itemTitle(item);
-  const title = clip(full, item.title ? TITLE_CHARS : FALLBACK_CHARS);
+  const clipped = clip(full, item.title ? TITLE_CHARS : FALLBACK_CHARS);
+  const title = item.kind === "bot_result" ? `${resultMark(item)} ${clipped}` : clipped;
   if (item.kind === "link" && isHttp(item.url)) {
     const link = externalLink(item, title);
     link.draggable = false; // a mouse swipe that starts on the title must not drag the link away

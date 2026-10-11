@@ -16,7 +16,16 @@ from aiogram.types import (
     MessageOriginUser,
 )
 
-from notes.capture import Acknowledgement, Attachment, Captured, Origin, Payload, Text, capture
+from notes.capture import (
+    Acknowledgement,
+    Attachment,
+    BotResult,
+    Captured,
+    Origin,
+    Payload,
+    Text,
+    capture,
+)
 from notes.domain.urls import extract_urls
 from shared.obs import get_logger
 
@@ -133,6 +142,37 @@ async def payload_of(bot: Bot, message: Message) -> Payload:
         caption=caption,
         file_name=document.file_name,
         preview=await _preview_of(bot, document.thumbnail),
+    )
+
+
+def bot_result_of(message: Message, job: tuple[str, str] | None) -> BotResult | None:
+    """The result under a pressed 💾: the file from the message, Workflow and title from its job-log row.
+
+    With no row the title is the document's name or the caption's first line; None: no file here.
+    """
+    workflow, title = job or (None, None)
+    first = (message.caption or "").split("\n", 1)[0]
+    caption = first.removeprefix("📄 ").removeprefix("🔊 ").strip()
+    if (doc := message.document) is not None:
+        return BotResult(
+            file_id=doc.file_id,
+            title=title or doc.file_name or caption,
+            workflow=workflow,
+            mime=doc.mime_type,
+            size=doc.file_size,
+            file_name=doc.file_name,
+        )
+    sound = message.voice or message.audio  # the voice message, or its audio-file fallback
+    if sound is None:
+        return None
+    return BotResult(
+        file_id=sound.file_id,
+        title=title or caption,
+        workflow=workflow,
+        mime=sound.mime_type or "audio/ogg",
+        size=sound.file_size,
+        file_name=message.audio.file_name if message.audio else None,
+        duration_s=sound.duration,
     )
 
 

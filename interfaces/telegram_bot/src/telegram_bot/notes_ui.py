@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from datetime import datetime
 from html import escape
 
@@ -180,6 +181,10 @@ async def show_in_chat(bot: Bot, item: Item) -> None:
         await _resend(bot, item)
     except TelegramAPIError as exc:
         log.warning("item %s: could not show it in the chat: %s", item.id, exc)
+        # a BotResult whose file is gone too says so
+        if item.kind == "bot_result" and isinstance(exc, TelegramBadRequest):
+            with contextlib.suppress(TelegramAPIError):
+                await bot.send_message(item.tg_chat_id, f"Оригинал удалён: <b>{title_of(item)}</b>")
 
 
 async def _resend(bot: Bot, item: Item) -> None:
@@ -188,6 +193,13 @@ async def _resend(bot: Bot, item: Item) -> None:
     caption = f"{SHOW_TEXT}: <b>{title_of(item)}</b>"
     if file_id is None:
         await bot.send_message(chat, f"Оригинал удалён: <b>{title_of(item)}</b>")
+    elif item.kind == "bot_result" and mime.startswith("audio/"):
+        try:
+            await bot.send_voice(chat, file_id, caption=caption)
+        except TelegramBadRequest:  # voice messages refused: it was delivered as an audio file
+            await bot.send_audio(chat, file_id, caption=caption)
+    elif item.kind == "bot_result":
+        await bot.send_document(chat, file_id, caption=caption)
     elif item.kind == "voice" and mime.startswith("video/"):
         await bot.send_video_note(chat, file_id)
     elif item.kind == "voice":

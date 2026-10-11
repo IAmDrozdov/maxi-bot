@@ -11,8 +11,8 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import BufferedInputFile
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
+from aiogram.types import BufferedInputFile, InlineKeyboardMarkup, Message
 from pydantic import BaseModel
 
 from shared.audio import OggOpusError, concat_ogg_opus
@@ -23,6 +23,7 @@ from shared.obs import get_logger
 
 from . import db, eta
 from .catalog import TG_UPLOAD_LIMIT
+from .keyboards import result_menu
 from .progress import ProgressReporter
 from .registry import BY_ID
 from .user_config import config_snapshot
@@ -137,26 +138,28 @@ async def _send_audio_result(
     caption: str,
     duration: int | None,
     title: str | None = None,
-) -> None:
+    markup: InlineKeyboardMarkup | None = None,
+) -> Message:
     """Send speech as a voice message; fall back to an audio file (README "Audio delivery")."""
     if duration:
         try:
-            await bot.send_voice(
+            return await bot.send_voice(
                 chat_id,
                 BufferedInputFile(data, filename=f"{stem}.ogg"),
                 caption=caption,
                 duration=duration,
+                reply_markup=markup,
             )
-            return
         except TelegramBadRequest as exc:
             # Chiefly VOICE_MESSAGES_FORBIDDEN: Premium users can refuse voice notes.
             log.warning("send_voice rejected (%s) — falling back to send_audio", exc)
-    await bot.send_audio(
+    return await bot.send_audio(
         chat_id,
         BufferedInputFile(data, filename=f"{stem}.ogg"),
         caption=caption,
         title=title or stem,
         duration=duration,
+        reply_markup=markup,
     )
 
 
@@ -168,8 +171,9 @@ def _caption(icon: str, title: str, result: Result) -> str:
     return "\n".join(lines)
 
 
-async def _deliver(bot: Bot, job: Job, result: Result) -> tuple[int, str | None]:
-    """Send the deliverable. Returns (output_size, delivery_error)."""
+async def _deliver(bot: Bot, job: Job, result: Result, job_row_id: int) -> tuple[int, str | None]:
+    """Send the deliverable, 💾 under its first message. Returns (output_size, delivery_error)."""
+    save = result_menu(job_row_id)
     deliverable = result.deliverable
     if deliverable is None:
         return 0, "the workflow produced nothing to send"
@@ -184,6 +188,7 @@ async def _deliver(bot: Bot, job: Job, result: Result) -> tuple[int, str | None]
             job.chat_id,
             BufferedInputFile(output, filename=deliverable.filename),
             caption=_caption("📄", job.title, result),
+            reply_markup=save,
         )
         return len(output), None
 
@@ -194,7 +199,7 @@ async def _deliver(bot: Bot, job: Job, result: Result) -> tuple[int, str | None]
 
     # Fits in one message — one voice note for the whole document.
     if len(audio.data) <= TG_UPLOAD_LIMIT:
-        await _send_audio_result(bot, job.chat_id, audio.data, stem, caption, duration)
+        await _send_audio_result(bot, job.chat_id, audio.data, stem, caption, duration, markup=save)
         return len(audio.data), None
 
     # Over the limit — split at chunk boundaries into multiple voice messages.
@@ -205,12 +210,13 @@ async def _deliver(bot: Bot, job: Job, result: Result) -> tuple[int, str | None]
             "and could not be split. Try a smaller document."
         )
     total_parts = len(batches)
+    first: Message | None = None
     for i, (batch, batch_duration) in enumerate(batches, start=1):
         part_name = f"{stem}.part{i}"
         part_caption = (
             caption if i == 1 else f"🔊 {html.escape(part_name)} (Part {i}/{total_parts})"
         )
-        await _send_audio_result(
+        part = await _send_audio_result(
             bot,
             job.chat_id,
             batch,
@@ -219,6 +225,15 @@ async def _deliver(bot: Bot, job: Job, result: Result) -> tuple[int, str | None]
             round(batch_duration) or None,
             title=f"{stem} ({i}/{total_parts})",
         )
+        first = first or part
+    # 💾 goes under part 1 once every part is in the chat: one BotResult per result (notes ADR-0013)
+    if first is not None:
+        try:
+            await bot.edit_message_reply_markup(
+                chat_id=job.chat_id, message_id=first.message_id, reply_markup=save
+            )
+        except TelegramAPIError as exc:
+            log.warning("could not put the save button under part 1: %s", exc)
     return len(audio.data), None
 
 
@@ -300,7 +315,7 @@ async def _process(bot: Bot, job: Job) -> None:
             eta.note_job_finished()
             return
 
-        output_size, delivery_error = await _deliver(bot, job, result)
+        output_size, delivery_error = await _deliver(bot, job, result, job_row_id)
         if delivery_error:
             await _edit_status(bot, job, f"⚠️ Done, but not delivered: {delivery_error}")
         else:
