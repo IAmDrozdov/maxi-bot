@@ -77,7 +77,7 @@ class Job:
     config: BaseModel
     preview: Preview
     status_message_id: int
-    # The estimate the user accepted; counts toward their daily cap while queued or running.
+    # The estimate accepted at Run; recorded as the cost when a job dies without one.
     estimated_cost_usd: float
     cancelled: bool = field(default=False)
 
@@ -333,7 +333,7 @@ async def _process(bot: Bot, job: Job) -> None:
             "error",
             error=f"[{failure.scope}] {failure.headline}: {failure.detail}",
             # An unhandled exception may have already billed some chunks (M4); the
-            # approved estimate is the safe upper bound to count toward the daily cap.
+            # approved estimate is the safe upper bound to record.
             cost_usd=job.estimated_cost_usd,
             duration_s=time.monotonic() - started,
         )

@@ -52,7 +52,7 @@ product vocabulary.
   live, which card the chat's one pending job belongs to, and what 💾 would save for it
   (`telegram_bot/cards.py`). Lost on restart, which is why old buttons answer "expired".
   Avoid: pending dict, drafts, card state.
-- **Savable** — the opaque attachment a card carries for 💾; for notes it is a
+- **Savable** — the opaque attachment the Owner's card carries for 💾; for notes it is a
   Draft. The card never looks inside it. Avoid: draft (when speaking of the card).
 - **Smoke runner** — `interfaces/smoke`, the terminal adapter over the same contract
   and the workflow smoke surface (ADR-001; the other checks are in `docs/verifying.md`).

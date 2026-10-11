@@ -9,8 +9,7 @@ from . import documents, notes, settings_menu, start, status
 
 
 def setup_routers(dp: Dispatcher) -> None:
-    # Defense in depth: the middleware already drops everyone else, and every router
-    # repeats the check, so a regression there cannot carry a stranger into a handler.
+    # Defense in depth: every router repeats the middleware's check.
     for router in (
         start.router,
         notes.router,

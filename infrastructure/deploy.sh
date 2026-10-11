@@ -34,7 +34,7 @@ preflight() {
   (cd "$REPO_ROOT" && grype dir:. --only-fixed)
 }
 
-# Without these the bot answers nobody: stop before the preflight, the SSH gate and any upload.
+# The required keys: stop before the preflight, the SSH gate and any upload.
 for key in OPENAI_API_KEY TELEGRAM_BOT_TOKEN OWNER_TELEGRAM_ID; do
   grep -q "^$key=." "$REPO_ROOT/.env" || { echo "ERROR: $key is not set in .env" >&2; exit 1; }
 done

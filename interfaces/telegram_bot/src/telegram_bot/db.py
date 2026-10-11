@@ -49,9 +49,6 @@ CREATE TABLE IF NOT EXISTS jobs (
 CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(telegram_id);
 
--- The access model before ADR-022.
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS invites;
 """
 
 
@@ -75,6 +72,8 @@ def init_db() -> None:
         conn.executescript(_SCHEMA)
         with contextlib.suppress(sqlite3.OperationalError):  # column already migrated
             conn.execute("ALTER TABLE jobs ADD COLUMN estimated_cost_usd REAL")
+        for table in ("users", "invites"):  # the access model before ADR-022
+            conn.execute(f"DROP TABLE IF EXISTS {table}")
 
 
 def reconcile_running_jobs() -> int:
