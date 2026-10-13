@@ -1,6 +1,6 @@
 {
-  "synced": "bef6e88",
-  "seen": {"tools/miniapp_local.py": "95398c02a62fa7340558d461588b037f18ee1552"},
+  "synced": "ce73dfe",
+  "seen": {},
   "pending": [],
   "vars": {
     "bot": "interfaces/telegram_bot/src/telegram_bot",
