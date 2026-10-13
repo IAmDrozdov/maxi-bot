@@ -26,7 +26,7 @@ The Mini App needs no bot token: `MINIAPP_INIT_SECRET` stands in for the derived
 
 `uv run python tools/miniapp_local.py up` does all of the below in one step: throwaway DBs under
 `.local/miniapp-local/` (seeded with 🧪 Items and Sections, or `--from-db-dir DIR` to copy
-`notes.sqlite3` and `telegram_bot.sqlite3`), a random key per run (never the real `.env` values),
+`notes.sqlite3` and `telegram_bot.sqlite3`; `up --demo` seeds the invented Russian data of the README pictures instead, and the default seed is unchanged), a random key per run (never the real `.env` values),
 the server on `--port` (18083, 127.0.0.1 only) and the signed URL in `.local/miniapp_url.txt` (mode
 600). That URL carries the test Owner's valid `initData`, so it is a credential for this run: open it, never
 paste or print it. It expires after 24 h (`auth_date`); run `up` again then. The API takes it as

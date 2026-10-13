@@ -9,6 +9,7 @@
 | Observability change | Change tracing behavior | `.skills/create-node.md` (workflow-side) | ADR-004/005, `docs/observability/tracing-elk.md` | `uv run pre-commit run --all-files` |
 | Layer refactor | Move code across layers | `.skills/create-workflow.md` (boundary reference) | ADR-005, `docs/architecture.md`, `tools/check_layers.py` | `uv run python tools/check_layers.py` |
 | ADR update/create | Add or revise architecture decision | `.skills/create-workflow.md` (doc checklist ref) | `docs/decisions/*`, ADR numbering consistency | `rg -n "ADR-" docs/decisions docs/*.md` |
+| README refresh | Owner runs /update-readme | `.claude/skills/update-readme/SKILL.md` | ADR-022, `.claude/skills/update-readme/map.json` | `drift.py check` + `uv run pre-commit run --all-files` |
 
 Rule anchors:
 - layer enforcement: `tools/check_layers.py`

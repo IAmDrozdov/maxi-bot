@@ -1,0 +1,63 @@
+{
+  "synced": "bef6e88",
+  "seen": {"tools/miniapp_local.py": "95398c02a62fa7340558d461588b037f18ee1552"},
+  "pending": [],
+  "vars": {
+    "bot": "interfaces/telegram_bot/src/telegram_bot",
+    "static": "interfaces/telegram_bot/src/telegram_bot/miniapp/static",
+    "api": "interfaces/telegram_bot/src/telegram_bot/miniapp",
+    "notes": "apps/notes/src/notes",
+    "diary": "apps/diary/src/diary"
+  },
+  "watch": ["apps/", "interfaces/", "workflows/", "shared/", "infrastructure/", "tools/", ".env.example", "pyproject.toml"],
+  "ignore": [
+    "tools/check_layers.py",
+    "tools/check_secrets.sh",
+    "tools/observability/",
+    "apps/notes/docs/",
+    "apps/notes/README.md",
+    "apps/notes/CONTEXT.md",
+    "apps/diary/README.md",
+    "apps/diary/CONTEXT.md",
+    "interfaces/telegram_bot/README.md",
+    "infrastructure/README.md"
+  ],
+  "sections": [
+    {"heading": "A price before every run", "paths": ["{bot}/cards.py", "{bot}/keyboards.py", "{bot}/eta.py", "{bot}/progress.py", "{bot}/worker.py", "{bot}/handlers/documents.py", "{bot}/handlers/status.py", "{bot}/handlers/notes.py", "shared/src/shared/pricing.py", "shared/src/shared/failures.py", "shared/src/shared/job.py"]},
+    {"heading": "Three agents", "paths": ["workflows/", "shared/src/shared/translate.py", "shared/src/shared/audio/", "shared/src/shared/doc/", "{bot}/routing.py", "{bot}/catalog.py", "{bot}/registry.py", "{bot}/user_config.py", "{bot}/handlers/settings_menu.py", "{bot}/handlers/start.py"]},
+    {"heading": "Send anything, it lands in notes", "paths": ["{notes}/capture.py", "{notes}/enrich/", "{notes}/classify/", "{notes}/domain/items.py", "{notes}/domain/urls.py", "{notes}/sweeper.py", "{bot}/notes_capture.py", "{bot}/notes_runtime.py", "{bot}/notes_ui.py", "{bot}/routing.py"]},
+    {"heading": "The Mini App", "paths": ["{api}/__main__.py", "{api}/auth.py", "{static}/app.js", "{static}/nav.js", "{static}/core.js", "{static}/index.html"]},
+    {"heading": "Open it and move around", "paths": ["{static}/app.js", "{static}/nav.js", "{bot}/notes_ui.py", "{bot}/diary_ui.py"]},
+    {"heading": "Notes", "paths": ["{api}/", "{notes}/domain/sections.py", "{notes}/domain/lists.py", "{notes}/domain/dashboard.py"]},
+    {"heading": "Reminders", "paths": ["{notes}/domain/reminders.py", "{bot}/notes_ui.py", "{bot}/notes_runtime.py", "{bot}/handlers/notes.py"]},
+    {"heading": "Diary", "paths": ["apps/diary/", "{bot}/diary_ui.py", "{bot}/diary_runtime.py", "{api}/api_diary.py", "{static}/diary.js", "{static}/diaryboard.js"]},
+    {"heading": "What it costs you", "paths": ["{api}/api_usage.py", "{static}/usage.js", "{bot}/db.py"]},
+    {"heading": "Quick start", "paths": ["interfaces/smoke/", "pyproject.toml", ".env.example"]},
+    {"heading": "Run the bot", "paths": ["{bot}/__main__.py", "{api}/__main__.py", "interfaces/telegram_bot/pyproject.toml", "tools/miniapp_local.py"]},
+    {"heading": "Configuration", "paths": ["shared/src/shared/config.py", ".env.example"]},
+    {"heading": "Security", "paths": ["{bot}/access.py", "{bot}/handlers/__init__.py", "{api}/auth.py", "infrastructure/docker/", "infrastructure/ssh-gate.sh", "infrastructure/deploy.sh"]},
+    {"heading": "Data and privacy", "paths": ["{notes}/db.py", "{diary}/db.py", "{bot}/db.py", "infrastructure/backup.py"]},
+    {"heading": "Legal note", "paths": ["workflows/yt_dub/"]},
+    {"heading": "Deploy and operate", "paths": ["infrastructure/"]},
+    {"heading": "Project layout", "paths": ["pyproject.toml"]}
+  ],
+  "pictures": [
+    {"file": "chat-price-card.png", "kind": "chat", "scene": "price-card", "paths": ["{bot}/cards.py", "{bot}/keyboards.py", "{bot}/eta.py", "{bot}/handlers/documents.py", "shared/src/shared/pricing.py"]},
+    {"file": "chat-result.png", "kind": "chat", "scene": "result", "paths": ["{bot}/worker.py", "{bot}/progress.py", "{bot}/handlers/notes.py", "{bot}/keyboards.py"]},
+    {"file": "chat-audio.png", "kind": "chat", "scene": "audio", "paths": ["{bot}/worker.py", "{bot}/handlers/notes.py", "shared/src/shared/audio/"]},
+    {"file": "chat-capture-reminder.png", "kind": "chat", "scene": "capture-reminder", "paths": ["{bot}/notes_ui.py", "{bot}/notes_capture.py", "{bot}/notes_runtime.py", "{notes}/capture.py", "{notes}/domain/reminders.py"]},
+    {"file": "chat-reminder-due.png", "kind": "chat", "scene": "reminder-due", "paths": ["{bot}/notes_ui.py", "{bot}/notes_runtime.py", "{notes}/domain/reminders.py"]},
+    {"file": "notes-list.png", "kind": "miniapp", "scene": "notes-list", "paths": ["{static}/notes.js", "{static}/cards.js", "{static}/core.js", "{static}/nav.js", "{static}/app.css", "{static}/index.html", "{api}/api_notes.py", "{notes}/domain/lists.py", "tools/miniapp_local.py"]},
+    {"file": "place-menu.png", "kind": "miniapp", "scene": "place-menu", "paths": ["{static}/nav.js", "{static}/app.js", "{static}/notes.js", "{static}/cards.js", "{static}/app.css", "{static}/index.html", "tools/miniapp_local.py"]},
+    {"file": "notes-search.png", "kind": "miniapp", "scene": "notes-search", "paths": ["{static}/notes.js", "{static}/cards.js", "{static}/app.css", "{static}/index.html", "{api}/api_notes.py", "{notes}/domain/lists.py", "tools/miniapp_local.py"]},
+    {"file": "notes-row-menu.png", "kind": "miniapp", "scene": "notes-row-menu", "paths": ["{static}/rowactions.js", "{static}/notes.js", "{static}/cards.js", "{static}/nav.js", "{static}/app.css", "{static}/index.html", "tools/miniapp_local.py"]},
+    {"file": "notes-item.png", "kind": "miniapp", "scene": "notes-item", "paths": ["{static}/detail.js", "{static}/cards.js", "{static}/core.js", "{static}/app.css", "{static}/index.html", "{api}/api_notes.py", "tools/miniapp_local.py"]},
+    {"file": "notes-sections.png", "kind": "miniapp", "scene": "notes-sections", "paths": ["{static}/notes.js", "{static}/sections.js", "{static}/cards.js", "{static}/app.css", "{static}/index.html", "{api}/api_notes.py", "{notes}/domain/sections.py", "tools/miniapp_local.py"]},
+    {"file": "notes-section-form.png", "kind": "miniapp", "scene": "notes-section-form", "paths": ["{static}/sections.js", "{static}/app.css", "{static}/index.html", "{api}/api_notes.py", "{notes}/domain/sections.py", "tools/miniapp_local.py"]},
+    {"file": "notes-dashboard.png", "kind": "miniapp", "scene": "notes-dashboard", "paths": ["{static}/dashboard.js", "{static}/nav.js", "{static}/app.css", "{static}/index.html", "{api}/api_notes.py", "{notes}/domain/dashboard.py", "tools/miniapp_local.py"]},
+    {"file": "diary-day.png", "kind": "miniapp", "scene": "diary-day", "paths": ["{static}/diary.js", "{static}/nav.js", "{static}/app.css", "{static}/index.html", "{api}/api_diary.py", "{diary}/domain.py", "tools/miniapp_local.py"]},
+    {"file": "diary-week.png", "kind": "miniapp", "scene": "diary-week", "paths": ["{static}/diary.js", "{static}/app.css", "{static}/index.html", "{api}/api_diary.py", "{diary}/domain.py", "tools/miniapp_local.py"]},
+    {"file": "diary-dashboard.png", "kind": "miniapp", "scene": "diary-dashboard", "paths": ["{static}/diaryboard.js", "{static}/nav.js", "{static}/app.css", "{static}/index.html", "{api}/api_diary.py", "{diary}/domain.py", "tools/miniapp_local.py"]},
+    {"file": "usage.png", "kind": "miniapp", "scene": "usage", "paths": ["{static}/usage.js", "{static}/nav.js", "{static}/app.css", "{static}/index.html", "{api}/api_usage.py", "{bot}/db.py", "tools/miniapp_local.py"]}
+  ]
+}

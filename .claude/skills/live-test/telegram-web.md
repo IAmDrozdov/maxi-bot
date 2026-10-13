@@ -9,7 +9,7 @@ bot chat's URL) live in `CLAUDE.local.md`, which is gitignored because this repo
   you need yourself (`new_page` with the bot chat's URL from `CLAUDE.local.md`) instead of asking
   the owner. Work only in the tabs you opened or the Telegram Web / Mini App tab; leave the owner's
   other tabs alone. A login QR still means the wrong profile: stop and report.
-- Send only `🧪`-labelled content, and never tap Run on an agent card (paid).
+- Send only `🧪`-labelled content, and never tap Run on an agent card (paid) (the README shoot differs: see `.claude/skills/update-readme/chat-shots.md`).
 - Mini App `initData` read from the page is the Owner's credential for 24 h: keep it under `.local/`,
   never print or commit it.
 
