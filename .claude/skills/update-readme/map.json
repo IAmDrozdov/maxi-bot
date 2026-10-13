@@ -1,6 +1,6 @@
 {
-  "synced": "8417cc7",
-  "seen": {"interfaces/telegram_bot/src/telegram_bot/handlers/start.py": "4f35b9341b9a71b3e5c891ece3556a14bac4d8a8"},
+  "synced": "559436c",
+  "seen": {},
   "pending": [],
   "vars": {
     "bot": "interfaces/telegram_bot/src/telegram_bot",
