@@ -1,6 +1,6 @@
 {
-  "synced": "ce73dfe",
-  "seen": {},
+  "synced": "8417cc7",
+  "seen": {"interfaces/telegram_bot/src/telegram_bot/handlers/start.py": "4f35b9341b9a71b3e5c891ece3556a14bac4d8a8"},
   "pending": [],
   "vars": {
     "bot": "interfaces/telegram_bot/src/telegram_bot",
@@ -47,6 +47,7 @@
     {"file": "chat-audio.png", "kind": "chat", "scene": "audio", "paths": ["{bot}/worker.py", "{bot}/handlers/notes.py", "shared/src/shared/audio/"]},
     {"file": "chat-capture-reminder.png", "kind": "chat", "scene": "capture-reminder", "paths": ["{bot}/notes_ui.py", "{bot}/notes_capture.py", "{bot}/notes_runtime.py", "{notes}/capture.py", "{notes}/domain/reminders.py"]},
     {"file": "chat-reminder-due.png", "kind": "chat", "scene": "reminder-due", "paths": ["{bot}/notes_ui.py", "{bot}/notes_runtime.py", "{notes}/domain/reminders.py"]},
+    {"file": "chat-composer.png", "kind": "chat", "scene": "composer", "paths": ["{bot}/__main__.py"]},
     {"file": "notes-list.png", "kind": "miniapp", "scene": "notes-list", "paths": ["{static}/notes.js", "{static}/cards.js", "{static}/core.js", "{static}/nav.js", "{static}/app.css", "{static}/index.html", "{api}/api_notes.py", "{notes}/domain/lists.py", "tools/miniapp_local.py"]},
     {"file": "place-menu.png", "kind": "miniapp", "scene": "place-menu", "paths": ["{static}/nav.js", "{static}/app.js", "{static}/notes.js", "{static}/cards.js", "{static}/app.css", "{static}/index.html", "tools/miniapp_local.py"]},
     {"file": "notes-search.png", "kind": "miniapp", "scene": "notes-search", "paths": ["{static}/notes.js", "{static}/cards.js", "{static}/app.css", "{static}/index.html", "{api}/api_notes.py", "{notes}/domain/lists.py", "tools/miniapp_local.py"]},

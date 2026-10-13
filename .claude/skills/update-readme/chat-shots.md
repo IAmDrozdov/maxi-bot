@@ -48,6 +48,10 @@ Never zoom on the full page: it holds the chat list, the header and the Owner's 
    `uv run --no-project --with pillow python` (a resample makes it larger).
 4. Remove the style and the tags.
 
+A frame with no bubble (`chat-composer.png`, the 📒 button): hide every `.Message`, the header and the
+date chips with the same style, take `.Composer`'s rect padded ~8 px, `computer zoom` on it. The
+message field must be empty (no draft), and nothing is sent.
+
 ## Pilot
 SKILL.md step 4 dispatches the run's first shot alone. Shoot it, write every message id to
 `ids.txt`, return the frame's path and stop: no cleanup yet, the later shots reuse the same chat

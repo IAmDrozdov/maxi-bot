@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Refresh the README and its pictures
 
-`README.md` is the public face of a public repo, and its 17 pictures are taken from demo data, never
+`README.md` is the public face of a public repo, and its 18 pictures are taken from demo data, never
 from the Owner's. Work only on what `drift.py` names. Manual only: the Owner calls this skill, nothing
 triggers it. Needs `node` (global `WebSocket`), Google Chrome, `/usr/bin/sips`, `uv`.
 

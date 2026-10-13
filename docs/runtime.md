@@ -51,7 +51,7 @@ router order is not part of the rule. One row per `Kind`:
 | `capture_voice` | a voice or round video → a Voice, transcribed in Enrichment | `notes.voice_handler` |
 | `ignore` | everything else: a command, a sticker, audio… | nothing |
 
-Other routers: `start` (`/start` and `/help`, one help text), `settings_menu` and `status`
+Other routers: `start` (`/start` and `/help`, one help text; a bare `/dub`, one hint), `settings_menu` and `status`
 (`/settings`, `/status`, `/cancel`).
 `notes` also takes the callbacks `JobCB save`, `ResultCB` (💾 under a delivered result, below) and
 `NotesCB offer` / `restore` / `done` (a Reminder's ✅ Готово marks the Item done and edits the

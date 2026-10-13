@@ -9,9 +9,9 @@ Responsibilities:
 - parse Telegram updates, download documents (≤20 MB Bot API cap)
 - accept a pasted link and scrape its main article to Markdown (trafilatura,
   `scrape.py`), then feed it into the same priced-action flow as an uploaded `.md`
-- turn an upload, a YouTube link or an article link into a `Source`, preview and
-  price it for every workflow that accepts that kind, and show cost + ETA on one-tap
-  action buttons (no separate confirm step); settings still reachable from the card
+- turn an upload, a YouTube link (after a command: `/dub <link>`) or an article link into a
+  `Source`, preview and price it for every workflow that accepts that kind, and show cost + ETA
+  on one-tap action buttons (no separate confirm step); settings still reachable from the card
 - history-backed ETA (`eta.py`): median sec/char from the jobs table, LRU cache
   rebuilt every few finished jobs, cold-start priors until enough samples exist
 - inline-keyboard selection of languages, models, voice (persisted)

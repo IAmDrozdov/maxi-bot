@@ -62,7 +62,7 @@ A failed job answers one question first: wait, or go fix something? Before it bl
 | `pdf_tts` | the same | one voice message (Ogg/Opus), optionally translated first | `🔊 Audio` |
 | `yt_dub` | one YouTube link | a voice-over in your language: captions first, speech-to-text when there are none | `🎬 Dub` |
 
-- **Reaching `🎬 Dub`.** A bare YouTube, Instagram or TikTok link is saved to notes without a card. Put the link after a command to get the card instead: `/dub https://www.youtube.com/watch?v=...`.
+- **Reaching `🎬 Dub`.** A bare YouTube, Instagram or TikTok link is saved to notes without a card. Put the link after a command to get the card instead: `/dub https://www.youtube.com/watch?v=...` (a bare `/dub` answers with that hint).
 - **Settings.** `/settings` has `📄 Translator` (source language, target language, model) and `🔊 Audio` (speech model, voice, translate first, and `🔊 Test` to hear a voice). Defaults are English to Russian; the languages offered come from `BOT_LANGUAGES`.
 - **Limits.** 20 MB in, 50 MB out (longer audio is split into parts of up to 48 MB), 2,000,000 characters a document, videos up to 4 hours. A video with no captions fails above roughly 65 minutes (the 25 MB speech-to-text cap). DOCX body paragraphs only; a PDF needs extractable text (no OCR).
 - **Commands.** `/settings`, `/status`, `/cancel`, `/help` (the same as `/start`).
@@ -87,12 +87,14 @@ One page inside Telegram, in Russian, for what the bot keeps: your notes, your d
 
 ### Open it and move around
 
+<img src="docs/images/readme/chat-composer.png" alt="The bot chat's message field with the 📒 button, the Mini App's entrance, on its left" width="520">
+
 <table>
 <tr>
 <td valign="top"><img src="docs/images/readme/place-menu.png" alt="The Places and Modes menu over the notes list: Заметки and Дневник, each as Записи or Дашборд, and Расходы below" width="260"></td>
 <td valign="top">
 <ul>
-<li>The <code>📒</code> button next to the message field opens it.</li>
+<li>The <code>📒</code> button on the left of the message field (the picture above) opens it.</li>
 <li>Two chat buttons open it on a fixed screen: «📅 Перенести» on a reminder shows that Item, «✍️ Записать» on the diary's evening message shows today's Day.</li>
 <li>The title row names where you are, for example <code>Заметки · записи ▾</code>. A tap opens the menu: a Place, «Заметки» or «Дневник», each as «Записи» (the working list) or «Дашборд» (the numbers), and «⚙️ Расходы» below.</li>
 <li>A Place opens in the Mode you left it in. The Section you picked and the rail's state are remembered too.</li>
