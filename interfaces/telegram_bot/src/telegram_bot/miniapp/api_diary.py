@@ -43,6 +43,11 @@ class MarkIn(BaseModel):
     mark: str | None = Field(max_length=10)
 
 
+class SuggestionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(max_length=1000)
+
+
 def get_db(request: Request) -> Database:
     return request.app.state.diary_db
 
@@ -137,6 +142,17 @@ def get_suggestions(
     limit: Annotated[int, Query(ge=1, le=20)] = domain.TOP_SUGGESTIONS,
 ) -> list[str]:
     return domain.suggestions(db, prefix, limit)
+
+
+@router.post("/suggestions/dismiss", status_code=204)
+def dismiss_suggestion(db: DbDep, body: SuggestionIn) -> None:
+    """Hides a text from the suggestions; the Entries stay."""
+    domain.dismiss_suggestion(db, body.text)
+
+
+@router.post("/suggestions/restore", status_code=204)
+def restore_suggestion(db: DbDep, body: SuggestionIn) -> None:
+    domain.restore_suggestion(db, body.text)
 
 
 @router.post("/entries", status_code=201)

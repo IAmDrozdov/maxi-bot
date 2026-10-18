@@ -31,7 +31,7 @@ const PAGE = 30;
 const MAX_CHUNK = 100; // the most items the server returns in one request
 const SEARCH_DELAY_MS = 300;
 const STALE_AFTER_MS = 350;
-const EDGE = 56; // a drag this close to the top or bottom of the screen scrolls the page
+const EDGE = 56; // a drag this close to the top or bottom of the list column scrolls it
 
 // The Lists this mode shows (CONTEXT: List), each with its request. A kept List's snapshot key (ADR-019) is the one
 // earlier builds wrote, so the last launch's list still paints after a deploy; Search and a Recheck are never kept.
@@ -91,8 +91,8 @@ export async function mountNotes(root, ctx) {
   const overdue = makeGroup({ slug: OVERDUE, name: "Просрочено", emoji: "⏰", color: "var(--danger)", todo_count: 0 });
   groups.set(OVERDUE, overdue);
 
-  const main = el("div");
-  const overlay = el("div");
+  const main = el("div", "screen");
+  const overlay = el("div", "overlay");
   overlay.hidden = true;
   root.replaceChildren(main, overlay);
 
@@ -546,7 +546,7 @@ export async function mountNotes(root, ctx) {
     savePrefs({ section: slug });
     if (slug === OVERDUE) setStatus("todo");
     loadSelected();
-    window.scrollTo(0, 0);
+    listCol.scrollTop = 0;
     render();
   }
 
@@ -645,7 +645,7 @@ export async function mountNotes(root, ctx) {
   searchButton.onclick = openSearch;
   cancelSearch.onclick = () => {
     closeSearch();
-    window.scrollTo(0, 0);
+    listCol.scrollTop = 0;
     render();
   };
 
@@ -654,7 +654,7 @@ export async function mountNotes(root, ctx) {
     haptic("select");
     closeSearch();
     state.editing = true;
-    window.scrollTo(0, 0);
+    listCol.scrollTop = 0;
     render();
   }
 
@@ -695,6 +695,7 @@ export async function mountNotes(root, ctx) {
   function openItem(item, { fresh = false, focus = null } = {}) {
     state.overlay = openDetail({
       list: main,
+      scrolls: [listCol, rail],
       host: overlay,
       item,
       fresh,
@@ -711,6 +712,7 @@ export async function mountNotes(root, ctx) {
   function openForm(section) {
     state.overlay = openSectionForm({
       list: main,
+      scrolls: [listCol, rail],
       host: overlay,
       section,
       saved: () => {
@@ -1023,7 +1025,7 @@ export async function mountNotes(root, ctx) {
       to: from,
       pitch: tops[1] - tops[0],
       startY: event.clientY,
-      startScroll: window.scrollY,
+      startScroll: listCol.scrollTop,
       y: event.clientY,
       pointerId: event.pointerId,
       frame: 0,
@@ -1045,7 +1047,7 @@ export async function mountNotes(root, ctx) {
   function place() {
     const { g, nodes, from, pitch } = drag;
     const last = nodes.length - 1;
-    const raw = drag.y - drag.startY + (window.scrollY - drag.startScroll);
+    const raw = drag.y - drag.startY + (listCol.scrollTop - drag.startScroll);
     const dy = Math.max(-from * pitch, Math.min((last - from) * pitch, raw));
     g.node.style.transform = `translateY(${dy}px)`;
     const to = Math.max(0, Math.min(last, Math.round(from + dy / pitch)));
@@ -1064,11 +1066,12 @@ export async function mountNotes(root, ctx) {
 
   function autoScroll() {
     if (!drag) return;
-    const step = drag.y < EDGE ? -8 : drag.y > window.innerHeight - EDGE ? 8 : 0;
+    const box = listCol.getBoundingClientRect();
+    const step = drag.y < box.top + EDGE ? -8 : drag.y > box.bottom - EDGE ? 8 : 0;
     if (step) {
-      const before = window.scrollY;
-      window.scrollBy(0, step);
-      if (window.scrollY !== before) place();
+      const before = listCol.scrollTop;
+      listCol.scrollTop += step;
+      if (listCol.scrollTop !== before) place();
     }
     drag.frame = requestAnimationFrame(autoScroll);
   }

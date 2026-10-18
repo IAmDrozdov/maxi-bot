@@ -45,11 +45,11 @@ const HEAD_FIELDS = [
   "transcript", "sender", "duration_s", "status",
 ]; // prettier-ignore
 
-// Shows `item` in `host` instead of `list`; `fresh` skips the first re-fetch; `focus`: "due" opens the reminder
+// Shows `item` in `host` instead of `list` (`scrolls`: the list's scrollers, restored on close); `fresh` skips the first re-fetch; `focus`: "due" opens the reminder
 // field, "sections" every Section's chip. hooks: sections (all, in order), changed(item), deleted(id),
 // status(item, status, extra) (the main button: the list makes the change and offers the way back), closed(),
 // visible() (false once the view is left). Returns { close }.
-export function openDetail({ list, host, item, fresh = false, focus = null, ...hooks }) {
+export function openDetail({ list, scrolls, host, item, fresh = false, focus = null, ...hooks }) {
   const state = {
     detail: item,
     open: true,
@@ -62,13 +62,13 @@ export function openDetail({ list, host, item, fresh = false, focus = null, ...h
   };
   let pollTimer = 0;
   let pollStep = 0;
-  const listScroll = window.scrollY;
+  const listScroll = scrolls.map((node) => node.scrollTop); // display:none drops a scroller's offset, so it is put back on close
   const parts = build();
   sync(item);
   list.hidden = true;
   host.hidden = false;
   setBack(close);
-  window.scrollTo(0, 0);
+  host.scrollTop = 0;
   document.addEventListener("visibilitychange", onReturn);
   if (focus === "due") openDue();
   if (!fresh) freshen(); // a list copy can be minutes old
@@ -84,7 +84,7 @@ export function openDetail({ list, host, item, fresh = false, focus = null, ...h
     list.hidden = false;
     setBack(null);
     hideMainButton();
-    window.scrollTo(0, listScroll);
+    scrolls.forEach((node, i) => (node.scrollTop = listScroll[i]));
     hooks.closed();
   }
 

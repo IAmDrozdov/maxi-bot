@@ -136,10 +136,11 @@ async def result_save_handler(
     with contextlib.suppress(TelegramAPIError):  # a second tap finds the button gone already
         await message.edit_reply_markup(reply_markup=None)
     if captured.outcome == "existing":
-        await callback.answer("Уже в заметках")
+        names = notes_ui.section_names(captured.item)
+        await callback.answer(f"Уже в заметках · {names}" if names else "Уже в заметках")
         return
     await notes_ui.acknowledge(bot, captured.item)
-    await callback.answer()
+    await callback.answer(notes_ui.sections_line(captured.item))
 
 
 @router.callback_query(NotesCB.filter(F.action == "offer"))

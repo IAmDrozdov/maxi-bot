@@ -10,7 +10,7 @@ the notes path or the deploy. Shorthand: `telegram_bot/x.py` and `handlers/x.py`
 | Service | Entry point | Does | Reads / writes |
 |---|---|---|---|
 | `bot` | `telegram-bot` (`telegram_bot/__main__.py`) | Telegram long polling. Answers the Owner, prices cards, runs one job at a time (`worker.worker_loop`), and runs notes enrichment plus the notes sweeper, show loop, reminder loop and, once per start, the Thumbnail backfill, and the diary Nudge loop | `telegram_bot.sqlite3` rw, `notes.sqlite3` rw, `diary.sqlite3` rw (the `nudges` table only), OpenAI, YouTube, the web |
-| `miniapp` | `telegram-miniapp` (`telegram_bot/miniapp`) | The Mini App: a public static shell plus a signed JSON API for notes, the diary and usage, `127.0.0.1:8083` (ADR-016, ADR-020, ADR-021) | `telegram_bot.sqlite3` read, `notes.sqlite3` rw, `diary.sqlite3` rw (the only process that writes Entries and Marks) |
+| `miniapp` | `telegram-miniapp` (`telegram_bot/miniapp`) | The Mini App: a public static shell plus a signed JSON API for notes, the diary and usage, `127.0.0.1:8083` (ADR-016, ADR-020, ADR-021) | `telegram_bot.sqlite3` read, `notes.sqlite3` rw, `diary.sqlite3` rw (the only process that writes Entries, Marks and dismissed suggestions) |
 | `funnel` (profile) | `tailscale/tailscale` | Publishes `miniapp` over HTTPS through Tailscale Funnel, outbound only (ADR-016) | `tsstate` volume |
 | `warp` (profile) | wireproxy | SOCKS5 egress for yt-dlp only (ADR-014) | — |
 | — | `smoke`, `notes-smoke` | Terminal-only reference runs (ADR-001) | local files |
@@ -100,14 +100,16 @@ The three Capture Paths (`direct_text_handler`, `file_handler`, `voice_handler`)
 `notes_capture.capture_message`; 💾 on a card (`save_handler`) takes the card's `Draft` from the
 card book. Both reach `notes.capture.capture` (a `Text` or an `Attachment` with an `Origin`): one
 Item per Capture, `capture_link` with dedupe for exactly one URL, else a Note with the whole text,
-a File or a Voice. `notes_capture.settle` then shows what the Capture decided (the Due line, the
+a File or a Voice. `notes_capture.settle` then shows what the Capture decided (the Due line, a duplicate's Sections line, the
 reaction) and `NotesRuntime.enrich_later` (`telegram_bot/notes_runtime.py`) starts
-`notes.enrich.pipeline.enrich_item`. The bot sends no message of its own (a Reminder and the diary Nudge are the exceptions): the Acknowledgement
-is its one reaction on the Owner's message (`notes_ui.react`): ✍ working, 👌 in notes, 👎 take a
-look (notes ADR-0009). A duplicate gets 👌 at once with no Enrichment (👎 if its Enrichment had
-failed), and keeps its Status, `done` included, unless its own words ask for a reminder (below). A
-Capture that throws, or notes being down, gets 👎. The bot writes a message of its own only for Reminders
-(notes ADR-0011, below) and for the diary Nudge (ADR-020 amended, «Дневник» below). Enrichment:
+`notes.enrich.pipeline.enrich_item`. The bot's message of its own is one reply per Item, the Sections line («👌 🍿 Посмотреть»,
+`notes_ui.sections_line`), sent from `notify` once Enrichment has filed the Item (notes ADR-0009
+amended 2026-10-18), plus the Reminder (notes ADR-0011, below) and the diary Nudge (ADR-020 amended,
+«Дневник» below). The Acknowledgement itself is still the reaction on the Owner's message
+(`notes_ui.react`): ✍ working, 👌 in notes, 👎 take a look. A duplicate gets 👌 at once with no
+Enrichment (👎 if its Enrichment had failed); a duplicate whose Enrichment is `done` also gets the
+Sections line at once, as a reply under the new message, and a pending or failed duplicate gets none, and keeps its Status, `done` included, unless its own words ask for a reminder (below). A
+Capture that throws, or notes being down, gets 👎. Enrichment:
 
 1. The provider fetch runs through the SSRF guard: YouTube and TikTok oEmbed, the Instagram
    captioned embed page, or a generic page. A Voice is downloaded from Telegram instead (the bot
@@ -119,8 +121,13 @@ Capture that throws, or notes being down, gets 👎. The bot writes a message of
 3. `store_enrichment` saves the result and `reminders.fill_from_filing` decides the Due (it fills an
    empty Due only, and one not after the Capture moment is dropped). It returns a `Notice`, and
    `notify(notice)` (`NotesRuntime.notify_for`) sets the reaction from `enrichment_status` on
-   `tg_message_id`; when the Notice carries a Due (Enrichment filled one that is still ahead) the bot
-   also replies to the Capture with «⏰ пт, 10 окт, 19:00» and a web_app `📅 Перенести`.
+   `tg_message_id`. When the Item is `saved` and `items.tg_ack_message_id` is NULL it also replies to
+   the Capture with the Sections line (`notes_ui.announce`, silent), and `items.remember_ack` stores
+   the sent message id so it is sent once per Item. When the Notice carries a Due (Enrichment filled
+   one that is still ahead) the same reply gets a second line «⏰ пт, 10 окт, 19:00», a web_app
+   `📅 Перенести` and sound (one message, not two); a Due alone on an already-acknowledged Item is
+   sent as the ⏰ line only. A failed Enrichment (👎) sends no line; a later successful re-enrich
+   sends it, because no id was recorded.
 
 Failures go to `schedule_retry` (backoff 1 min → 12 h, then `failed`). The sweeper
 (`NOTES_ENRICH_SWEEP_SECONDS`) retries anything due and anything a restart interrupted; a retry
@@ -135,7 +142,8 @@ message a BotResult: `notes_capture.bot_result_of` reads the file facts off the 
 title and Workflow id from the job log (`db.job_title`; with no row, the file name or the caption's first
 line), and `notes.capture.capture` takes it as a `BotResult` payload. The Item is filed in «От бота»
 (`from_bot`, built in, never deleted, never the Classifier's choice) and has no Enrichment. The button
-goes away and 👌 lands on the bot's own message; a second press answers «Уже в заметках», and a
+goes away and 👌 lands on the bot's own message; the Sections line is the callback toast
+(«👌 📑 От бота»), not a chat message; a second press answers «Уже в заметках · 📑 От бота», and a
 partial unique index on the chat and message keeps it to one Item. A failed save keeps the button. A
 split audio result gets the button under part 1 once every part is sent, so its BotResult is part 1. The Owner may file a
 BotResult under other Sections too; `sections.refile` never takes it out of «От бота». «Открыть в
@@ -167,7 +175,11 @@ right, the working view's own actions. The button opens the place menu: «Зам
 `[Записи | Дашборд]` segment, then «⚙️ Расходы». A Place's name opens it in the Mode it was left in. Each
 Place and Mode is mounted once per launch and kept until the app closes. A nested screen (the Item view, the
 Section form, the diary's Week, Day, Month and Year, Расходы) has no title row: Telegram's back button
-returns, and a client below Bot API 6.1 gets «← Назад» from the shell. The app remembers the last Place, each
+returns, and a client below Bot API 6.1 gets «← Назад» from the shell. The page itself never scrolls: `body`
+is a fixed-height flex column (title row, then `main`), and `main` scrolls, except on «Заметки · записи»,
+where `app.js` marks it `fixed` and only the rail and the list column scroll (each by itself; the Item view
+and the Section form scroll in their own host). The list's offset is saved and put back when an Item or the
+form closes. The app remembers the last Place, each
 Place's Mode, the selected Section and whether the Section rail is shown (`nav_v1`, kept next to the
 snapshots; a 401 or 403 wipes both). A launch opens what is remembered, «Заметки · записи» the first time;
 `📅 Перенести` (`?item=<id>`) opens that Item over the notes list whatever is remembered, and the diary
@@ -216,7 +228,8 @@ calling the domain.
 
 - **Записи** (`diary.js`) is today's Day editor: the Mark 💀 😐 🔥 (tapping the set one clears it), a field
   that adds an Entry with prefix suggestions from `/api/diary/suggestions?prefix=` (the top five before
-  typing), and the Day's Entries, each with «+» (raise) and «✏️» (edit; delete is inside). With a mouse or a
+  typing; each chip has «×», which hides the text through `POST /api/diary/suggestions/dismiss` and offers
+  «↩ Вернуть» in the toast, `…/restore`; stored in `dismissed_suggestions`, Entries untouched), and the Day's Entries, each with «+» (raise) and «✏️» (edit; delete is inside). With a mouse or a
   desktop client the field takes the focus. «Неделя ›» in the title row, like the line «Эта неделя: N дней с
   записями ›» under the editor, opens the Week as a nested screen (`GET /api/diary/week?day=&tz=`; today's
   Week is read with the top five suggestions in one round): ‹ › between Weeks, a chip per Month the Week
@@ -273,6 +286,8 @@ HMAC against `MINIAPP_INIT_SECRET`, requires `auth_date` under 24 h and admits o
 `OWNER_TELEGRAM_ID` (401 or 403). The API only parses and serialises; the rules stay in
 `apps/notes`. A re-enrich from the app flips the Item to `pending` and the bot's sweeper does
 the work. Edits made in the app do not change the reaction in the chat.
+A re-enrich re-sets the reaction but sends no second Sections line (`tg_ack_message_id` is already
+set; an Item saved before 2026-10-18 has none, so its first re-enrich sends one line); a Section changed in the app is not announced in the chat.
 
 ## State that lives only in memory
 

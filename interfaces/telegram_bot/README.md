@@ -114,10 +114,12 @@ Phone UI rules (found on an iPhone, 2026-09-29; the shell in `miniapp/static`):
 
 - Form controls are at least 16 px, and the viewport has `maximum-scale=1`. Below that iOS zooms
   the page on focus and never zooms back, so every screen is clipped at the right edge.
-- Nothing is `sticky` or `fixed` at the top: Telegram's native header covers the top edge of the
-  webview, so a sticky row of tabs slid half under it (the title row that replaced it scrolls with the
-  page). Menus and the toast are popups over the page, not bars. `disableVerticalSwipes` keeps a scroll at
-  the top from dragging the whole sheet.
+- Nothing is `position: sticky`: Telegram's native header covers the top edge of the webview, so a
+  sticky row of tabs slid half under it. The page never scrolls instead: `html` and `body` are as tall as
+  Telegram's viewport (`--tg-viewport-stable-height`, else `100dvh`) with `overflow: hidden`, the title row
+  is a flex item above `main`, and `main` scrolls (on «Заметки · записи» the rail and the list column scroll
+  by themselves, `main.fixed`). Every link of that flex chain needs `min-height: 0`. Menus and the toast are
+  `position: fixed` popups. `disableVerticalSwipes` keeps a scroll at the top from dragging the whole sheet.
 - A tap rebuilds only what it changed. Controls are built once and only flip a class or text;
   lists are reconciled by id (`core.reconcile`), so kept rows keep their images; a new view is
   swapped in after its data arrives, never a blank; a reset keeps the old list until the new

@@ -1,6 +1,6 @@
 # ADR-021: The Mini App navigates by Place and Mode, and an Item is closed from the list
 
-Status: Accepted (2026-10-10). Supersedes ADR-020 decision 4 (tabs, the toggle, opening on the Dashboard); amends ADR-016 (decision 5: what a launch opens) and ADR-019 (decision 3: the phone also keeps the navigation memory). Amended 2026-10-11: a rail button also shows the first ten characters of the Section's name under its mark; the rail is 64 px wide and 6 px from the list, which leaves the list 298 px of a 400 px page. Measured that day in headless Chrome at 400 × 644 on the demo data: 298 px still shows six «Работа» Items, 296 px shows five (decision 4). Amended 2026-10-11 again: the selected Section's name and count stand in the title row after the Place button — a caption with the rail, a button that opens the Sections without it — and no longer in a row of their own above the list, so the first Item is 28 px higher (32 px with the rail hidden); the name is cut with «…» when the row is short (the owner kept the Mode word rather than give its room to the name), and «✓» marks the «Готово» list there (decisions 1 and 4). Amended 2026-10-11 (decision 3: a second launch link).
+Status: Accepted (2026-10-10). Supersedes ADR-020 decision 4 (tabs, the toggle, opening on the Dashboard); amends ADR-016 (decision 5: what a launch opens) and ADR-019 (decision 3: the phone also keeps the navigation memory). Amended 2026-10-11: a rail button also shows the first ten characters of the Section's name under its mark; the rail is 64 px wide and 6 px from the list, which leaves the list 298 px of a 400 px page. Measured that day in headless Chrome at 400 × 644 on the demo data: 298 px still shows six «Работа» Items, 296 px shows five (decision 4). Amended 2026-10-11 again: the selected Section's name and count stand in the title row after the Place button — a caption with the rail, a button that opens the Sections without it — and no longer in a row of their own above the list, so the first Item is 28 px higher (32 px with the rail hidden); the name is cut with «…» when the row is short (the owner kept the Mode word rather than give its room to the name), and «✓» marks the «Готово» list there (decisions 1 and 4). Amended 2026-10-11 (decision 3: a second launch link). Amended 2026-10-18: the page itself no longer scrolls. The title row and the notes Section rail are pinned by a flex-column shell (`html`/`body` as tall as Telegram's viewport, `overflow: hidden`), not by `position: sticky`; only `main` (diary, Dashboards, Расходы) or, on «Заметки · записи», the list column and the rail, each by itself, scroll. This reverses the rejected «Pinning the rail» below and adds an iPhone check to the Consequences.
 
 ## Context
 
@@ -63,7 +63,9 @@ from four refinements of the third.
 - **Swipes as the only way to close an Item.** A gesture nobody can see; «⋮» stays and the swipe speeds it up.
 - **Staying on the Item view after «✓ Готово».** The Owner closes a task and goes on to the next one.
 - **Pinning the rail.** Left to scroll with a long Section until it is checked on an iPhone, where a sticky
-  row once slid under Telegram's header.
+  row once slid under Telegram's header. Reversed 2026-10-18 (owner: only the list scrolls): the rail and the
+  title row stay put because the shell is a fixed-height flex column, which has no `sticky` to slide under the
+  header; the rail scrolls by itself when the Sections outgrow the window.
 
 ## Consequences
 
@@ -74,3 +76,9 @@ from four refinements of the third.
 - Text in a row cannot be selected, and a long title is cut at about three lines instead of being clamped.
 - Still to be checked on the owner's devices: a right swipe at the left edge on iOS, a two-finger trackpad
   swipe in Telegram for macOS, and a menu near the bottom edge on iOS.
+- The shell is sized by `--tg-viewport-stable-height` (else `100dvh`), so it stays put when the keyboard opens.
+  Still to be checked on an iPhone (2026-10-18): the title row does not clip under Telegram's header, and the
+  keyboard over Search, the Section form or a diary field does not shift the shell. If it does, size it by
+  `min(var(--tg-viewport-stable-height), 100dvh)`.
+- An opened Item or Section form returns to the list at the offset it left, since `display: none` drops a
+  scroller's `scrollTop` and the views save and restore it.

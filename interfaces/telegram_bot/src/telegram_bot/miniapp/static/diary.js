@@ -11,6 +11,7 @@ import {
   keepSnapshot,
   plural,
   resetSlot,
+  scrollViewTop,
   setBack,
   slot,
   snapshot,
@@ -103,6 +104,8 @@ export async function mountToday(root, ctx) {
     today: todayIso(), // «today» when the Week was last read: once the Day turns, the current Week follows it
     week: null, // the Week on the Week screen; the same object as `now` while that is the current one
     top: snapshot("diary-top") ?? [], // the five most frequent Entry texts
+    dismissGen: 0, // bumped once a dismissal or its undo has settled: an editor's cached prefix answers older than it are dropped
+    dismissed: new Set(), // casefolded texts hidden at once, before the server's answer; filters every suggestion row
     screens: [], // the open Week / Day editor / Month / Year, the top one last
     after: null, // what shown() does once the pane is on screen
   };
@@ -249,6 +252,29 @@ export async function mountToday(root, ctx) {
       keepSnapshot("diary-top", top);
       for (const screen of editors()) screen.paintTop?.();
     });
+  }
+
+  // Repaints every editor's suggestions without `text`, then tells the server; the toast offers the way back.
+  function dismissSuggestion(text) {
+    haptic("select");
+    const key = text.toLowerCase();
+    state.dismissed.add(key);
+    state.top = state.top.filter((t) => t !== text);
+    keepSnapshot("diary-top", state.top);
+    for (const screen of editors()) screen.paintSuggest?.();
+    const send = (path) => () => api(path, { method: "POST", body: { text } });
+    const settle = () => {
+      state.dismissGen += 1; // a prefix read that raced the request may still hold the old answer
+      for (const screen of editors()) screen.paintSuggest?.();
+      refreshTop();
+    };
+    write(send("/diary/suggestions/dismiss"), settle);
+    const restore = () => {
+      state.dismissed.delete(key);
+      for (const screen of editors()) screen.paintSuggest?.();
+      write(send("/diary/suggestions/restore"), settle);
+    };
+    toast("Подсказка убрана", { action: restore, label: "↩ Вернуть" });
   }
 
   // --- the root: today's Day editor and the week line -------------------------------------------
@@ -420,7 +446,7 @@ export async function mountToday(root, ctx) {
     host.append(screen.node);
     host.hidden = false;
     setBack(pop);
-    window.scrollTo(0, 0);
+    scrollViewTop();
   }
 
   function pop() {
@@ -438,7 +464,7 @@ export async function mountToday(root, ctx) {
       loadToday(); // the screens above may have changed today's Entries
       focusRoot();
     }
-    window.scrollTo(0, 0);
+    scrollViewTop();
   }
 
   function closeAll() {
@@ -500,11 +526,17 @@ export async function mountToday(root, ctx) {
     };
 
     const found = new Map(); // prefix -> texts
+    let foundGen = state.dismissGen;
     let suggestTicket = 0;
     async function paintSuggest() {
+      if (foundGen !== state.dismissGen) {
+        found.clear();
+        foundGen = state.dismissGen;
+      }
       const prefix = input.value.trim();
       if (!prefix) {
-        slot(suggest, "top:" + state.top.join("\n"), () => state.top.map((text) => suggestion(text)));
+        const top = state.top.filter((t) => !state.dismissed.has(t.toLowerCase()));
+        slot(suggest, "top:" + top.join("\n"), () => top.map((text) => suggestion(text)));
         return;
       }
       const mine = ++suggestTicket;
@@ -514,15 +546,25 @@ export async function mountToday(root, ctx) {
         found.set(prefix, texts);
       }
       if (mine !== suggestTicket) return;
-      const texts = found.get(prefix).filter((t) => t !== prefix);
+      const texts = found.get(prefix).filter((t) => t !== prefix && !state.dismissed.has(t.toLowerCase()));
       slot(suggest, "q:" + texts.join("\n"), () => texts.map((text) => suggestion(text)));
     }
 
+    // A chip adds its text; «×» hides the text from the suggestions (the Entries stay), with an undo in the toast.
     function suggestion(text) {
       const chip = el("button", "chip filter", text);
       chip.type = "button";
       chip.onclick = () => add(text);
-      return chip;
+      const x = el("button", "chip-x", "×");
+      x.type = "button";
+      x.setAttribute("aria-label", "Убрать подсказку");
+      x.onclick = (event) => {
+        event.stopPropagation();
+        dismissSuggestion(text);
+      };
+      const group = el("div", "chip-group");
+      group.append(chip, x);
+      return group;
     }
 
     function paintCounter() {
@@ -663,6 +705,7 @@ export async function mountToday(root, ctx) {
         paint();
       },
       paintTop: () => input.value.trim() || paintSuggest(),
+      paintSuggest,
       focus: () => input.focus(),
       text: () => input.value,
       setText(value) {

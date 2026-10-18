@@ -285,8 +285,15 @@ export function showMessage(text) {
   hideMainButton();
   document.getElementById("topbar").replaceChildren();
   document.getElementById("menu").hidden = true;
-  document.getElementById("view").replaceChildren(el("p", "message", text));
+  const view = document.getElementById("view");
+  view.classList.remove("fixed");
+  view.replaceChildren(el("p", "message", text));
 }
+
+// The page is a fixed shell: «top of the screen» means `main` at its top.
+export const scrollViewTop = () => {
+  document.getElementById("view").scrollTop = 0;
+};
 
 export function handleError(error) {
   if (error instanceof AuthError) {

@@ -339,12 +339,36 @@ def dashboard(db: Database, year: int, today: date) -> Dashboard:
 
 
 def suggestions(db: Database, prefix: str = "", limit: int = TOP_SUGGESTIONS) -> list[str]:
-    """Distinct past Entry texts starting with `prefix` (any case), most frequent first, then most recent."""
+    """Distinct past Entry texts starting with `prefix` (any case), most frequent first, then most recent.
+
+    A dismissed text is skipped before the limit, so the next one moves up.
+    """
     wanted = prefix.strip().casefold()
     with db.session(readonly=True) as conn:
         rows = conn.execute(
             "SELECT text, count(*) AS n, max(day) AS last FROM entries GROUP BY text "
             "ORDER BY n DESC, last DESC, text"
         ).fetchall()
-    found = [row["text"] for row in rows if row["text"].casefold().startswith(wanted)]
+        dismissed = {r["key"] for r in conn.execute("SELECT key FROM dismissed_suggestions")}
+    found = [
+        row["text"]
+        for row in rows
+        if row["text"].casefold() not in dismissed and row["text"].casefold().startswith(wanted)
+    ]
     return found[:limit]
+
+
+def dismiss_suggestion(db: Database, text: str) -> None:
+    """Hide a text from the suggestions (by casefolded text); Entries and the Dashboard are untouched."""
+    key = clean_text(text).casefold()
+    with db.session() as conn:
+        conn.execute(
+            "INSERT INTO dismissed_suggestions(key) VALUES (?) ON CONFLICT(key) DO NOTHING", (key,)
+        )
+
+
+def restore_suggestion(db: Database, text: str) -> None:
+    """Bring a dismissed text back into the suggestions."""
+    key = clean_text(text).casefold()
+    with db.session() as conn:
+        conn.execute("DELETE FROM dismissed_suggestions WHERE key=?", (key,))

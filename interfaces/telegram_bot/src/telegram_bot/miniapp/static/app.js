@@ -23,6 +23,9 @@ import { closeMenu, mountTopbar } from "./nav.js";
 import { mountNotes } from "./notes.js";
 import { mountUsage } from "./usage.js";
 
+// Views whose pane fills the fixed shell and scrolls its own parts; every other view scrolls in `main`.
+const FIXED = new Set(["notes:list"]);
+
 // Every place has the same two modes: its working view and its Dashboard.
 const MODES = [
   { id: "list", label: "Записи", word: "записи" },
@@ -131,9 +134,10 @@ async function boot() {
         setBack(null);
         hideMainButton();
         paintBar(entry);
+        view.classList.toggle("fixed", FIXED.has(key));
         view.replaceChildren(entry.pane);
         onScreen = key;
-        window.scrollTo(0, 0);
+        view.scrollTop = 0;
       }
       ctl.shown?.();
     } catch (error) {
@@ -153,8 +157,9 @@ async function boot() {
         if (mine !== ticket || isHalted()) return;
         leave();
         hideMainButton();
+        view.classList.remove("fixed");
         view.replaceChildren(pane);
-        window.scrollTo(0, 0);
+        view.scrollTop = 0;
         setBack(back);
       });
   }

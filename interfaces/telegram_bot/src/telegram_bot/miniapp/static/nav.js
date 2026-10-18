@@ -72,9 +72,9 @@ export function openMenu(anchor, items, { align = "left", at = null } = {}) {
   let y = at ? at.y : rect.bottom + GAP;
   x = Math.max(EDGE, Math.min(x, document.documentElement.clientWidth - width - EDGE));
   if (y + height > window.innerHeight - EDGE) y = Math.max(EDGE, window.innerHeight - EDGE - height);
-  // In page coordinates: the menu scrolls with what it belongs to.
-  menu.style.left = `${x + window.scrollX}px`;
-  menu.style.top = `${y + window.scrollY}px`;
+  // Window coordinates: the menu is position: fixed and the page never scrolls.
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
 
   anchor?.classList.add("open");
   document.addEventListener("keydown", onKey, true);

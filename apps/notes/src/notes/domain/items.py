@@ -471,6 +471,12 @@ def request_reenrich(db: Database, item_id: int, *, now: datetime | None = None)
         return fetch(conn, item_id)
 
 
+def remember_ack(db: Database, item_id: int, message_id: int) -> None:
+    """Keep the id of the Sections reply sent for an Item, so it is sent once (ADR-0009); `updated_at` stays."""
+    with db.session() as conn:
+        conn.execute("UPDATE items SET tg_ack_message_id=? WHERE id=?", (message_id, item_id))
+
+
 def store_transcript(db: Database, item_id: int, text: str) -> None:
     """Keep a Voice's Transcript as soon as STT lands, so a Classifier retry does not pay for it again."""
     with db.session() as conn:

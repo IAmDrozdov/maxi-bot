@@ -39,6 +39,10 @@ _Avoid_: overview, stats, обзор
 The Entries raised to a window's Level: a Week's Summary holds its Entries at week Level or higher, and so on up. Not a separate text: editing or deleting an Entry changes every Summary it sits in.
 _Avoid_: digest, recap, highlights, итоги (in code)
 
+**Suggestion**:
+A past Entry text offered as a chip under the Day's field: the distinct texts, most repeated first (the top five before typing, those starting with what is typed otherwise). The Owner can dismiss one («×»): that hides the text from the Suggestions only, by its casefolded text, so the next one moves up; no Entry, Summary or Dashboard figure changes, and a new Entry with the same text does not bring it back. The toast's «↩ Вернуть» restores it.
+_Avoid_: hint, autocomplete, подсказка (in code)
+
 **Nudge**:
 The bot's evening message to the Owner when today's Day is still untouched: no Entry and no Mark. A Mark alone holds it back, though it does not count for the Streak. Not a notes Reminder: it has no Due and nothing to close.
 _Avoid_: reminder, напоминание, напоминалка, notification, alarm

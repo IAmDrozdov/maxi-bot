@@ -57,10 +57,12 @@ bot chat's URL) live in `CLAUDE.local.md`, which is gitignored because this repo
   once in the new tab (`history.replaceState(null, "", location.pathname + location.search)`;
   `telegram-web-app.js` has already read it). Outside Telegram, `DeviceStorage` never answers; and
   Telegram Web answers it `UNSUPPORTED`. So the app keeps its snapshot in `localStorage` there.
-- The Acknowledgement is the bot's reaction on your message (✍ → 👌 or 👎, notes ADR-0009), and
-  the bot sends no message. Wait for it in the page: one `evaluate_script` that polls the DOM every
-  2 s for up to 60 s and returns the reactions on your last message (reading the DOM works; only
-  clicks are ignored). Once a selector is confirmed, write it here so the next run reuses it.
+- The Acknowledgement is the bot's reaction on your message (✍ → 👌 or 👎, notes ADR-0009). Once
+  Enrichment files the Item the bot also replies under the Capture with «👌 <emoji> <Section>»
+  (silent unless it carries a Due). Wait for both in the page: one `evaluate_script` that polls the
+  DOM every 2 s for up to 60 s and returns the reactions on your last message and the new bubble
+  under it (reading the DOM works; only clicks are ignored). A BotResult 💾 gives a toast, not a
+  message. Once a selector is confirmed, write it here so the next run reuses it.
 - If this Mac is on the tailnet that publishes the Mini App, Chrome blocks the iframe (MagicDNS
   resolves to a private address): `tailscale set --accept-dns=false`, wait until the name no longer
   resolves to `100.x`, test, then `--accept-dns=true`.

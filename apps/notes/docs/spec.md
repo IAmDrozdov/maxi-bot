@@ -6,7 +6,7 @@ Status: ready-for-agent
 > `maxi-notes` repo. Where it disagrees with the merge, the merge wins:
 > - **Bot:** no own bot. The Owner is the maxi-bot admin (`ADMIN_TELEGRAM_ID`). Capture has
 >   no card (ADR-0007, ADR-0009): the admin's text, social links, photos, videos and files are saved
->   at once and acknowledged by a reaction on the message. Only a message with exactly one website
+>   at once and acknowledged by a reaction on the message, plus (since 2026-10-18) one reply naming the Section it landed in once filed, once per Item (ADR-0009 amended). Only a message with exactly one website
 >   URL, or an agent document, gets the ask-first card with 💾 В заметки. Invitees never see notes.
 >   A saved Link has no 🤖 button.
 > - **Classifier:** OpenAI, not Claude (ticket 05). `CLASSIFIER_*` settings are `NOTES_CLASSIFIER_*`.
@@ -113,7 +113,7 @@ sqlite in WAL mode, one file on a shared volume, read and written by both proces
 
 - Only the configured Owner id is answered; every other update is dropped and logged. Private chats only.
 - Commands: `/start` (help), `/help`, `/list` (Browse). Every other text/caption message is a Capture — no intent detection.
-- Acknowledgement text while pending: "💾 Сохранено · 📦 Остальное / ⏳ Разбираю ссылку…" (Notes: "⏳ Разбираю…"); after Enrichment: the Section line (emoji + name, joined by " · "), the title in bold, the Gist, and "Source · author" in italics. All remote and Owner strings are HTML-escaped.
+- Acknowledgement text while pending: "💾 Сохранено · 📦 Остальное / ⏳ Разбираю ссылку…" (Notes: "⏳ Разбираю…"); after Enrichment: the Section line (emoji + name, joined by " · "; this early card text is superseded by the reply «👌 🍿 Посмотреть» of ADR-0009 amended 2026-10-18), the title in bold, the Gist, and "Source · author" in italics. All remote and Owner strings are HTML-escaped.
 - Keyboard on every Acknowledgement and item card: one toggle button per Section (✅ prefix when on), then Начато / Готово / В архив, and Вернуть for archived Items. Toggling off the last Section adds Other and shows a toast saying so. Any tap sets Reviewed. Callback data stays within Telegram's 64-byte limit.
 - Dedupe reply reuses the keyboard: "🔁 Уже сохранено: …" with Sections and Status; "♻️ Достал из корзины: …" when restored; "📦 Лежит в архиве: …" with Вернуть when archived.
 - Browse: `/list` shows Sections with active counts; a Section shows pages of five active Items (new/started first, then done; newest first) with numbered buttons opening an item card and ◀️ ▶️ paging; archived and trashed Items never appear.

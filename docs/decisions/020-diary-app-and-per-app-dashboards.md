@@ -1,6 +1,6 @@
 # ADR-020: A diary app, and a Dashboard inside each Mini App tab
 
-Status: Accepted (2026-10-08). Amends ADR-016 (decision 1: what the Mini App holds) and ADR-015 (a second app). Decision 4 superseded by ADR-021 (place and mode navigation). Amended 2026-10-11: the bot reaches the diary for the Nudge (below).
+Status: Accepted (2026-10-08). Amends ADR-016 (decision 1: what the Mini App holds) and ADR-015 (a second app). Decision 4 superseded by ADR-021 (place and mode navigation). Amended 2026-10-11: the bot reaches the diary for the Nudge (below). Amended 2026-10-18: a Suggestion can be dismissed (below).
 
 ## Context
 
@@ -43,6 +43,15 @@ Rejected: a notes Item with a Due each evening (it would sit in the notes lists,
 the Dashboard, and ✅ Готово would not mean an Entry was written); sending from `miniapp` (a second sender
 of chat messages with its own retry); an hour or a switch in ⚙️ or in the environment (one Owner, one
 hour; the claim does not depend on where the hour comes from); a repeat, or tidying earlier Nudges.
+
+## Amendment (2026-10-18): dismissing a Suggestion
+
+The Suggestions stay derived from the Entries on every request, but the Owner can now hide one with «×» on its
+chip. A dismissal is a row in `dismissed_suggestions` (`diary.sqlite3`), keyed by the text's Python `casefold()`
+(not SQLite `lower`, which skips Cyrillic), and `suggestions()` skips those keys before the prefix filter and
+the limit, so the top five refill. Entries, Summaries and the Dashboard (`top_entry` included) are untouched.
+The undo is the toast's «↩ Вернуть» (`/suggestions/restore`); there is no list of dismissed texts. Rejected:
+deleting the Entries (the Owner wants the history), and a flag on the Entry (the text repeats across Entries).
 
 ## Considered and rejected
 

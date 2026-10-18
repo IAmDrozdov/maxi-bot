@@ -52,7 +52,14 @@ context and device emulation for a phone viewport; do not resize the owner's win
 change is not done until, at 320, 393 and 400 px (the last is Telegram for macOS), every Place, Mode and
 nested screen has `scrollWidth == clientWidth`, every
 form control computes to at least 16 px, and a `PerformanceObserver` on `layout-shift` reads 0
-while a rail button, a chip or «✓» is tapped on a list that is already loaded.
+while a rail button, a chip or «✓» is tapped on a list that is already loaded. The page must not scroll
+(the shell is fixed, ADR-021): at the same widths `document.scrollingElement.scrollHeight <= innerHeight` on
+the notes list, the diary, both Dashboards, Расходы, the Item view and the Section form; the title row's
+`top` does not change while the list column scrolls; the rail scrolls by itself when there are many Sections;
+the list offset is back after the Item view and the Section form close; an edit-mode drag near the bottom
+edge scrolls the list column; and a menu opened near the bottom edge stays inside the window. Simulate the
+keyboard or a sheet with `Telegram.WebView.receiveEvent("viewport_changed", { height, is_state_stable: true,
+is_expanded: true })`: the shell follows it.
 
 Signed-curl List checks (one `notes.domain.lists` List per request; seed with `miniapp_local.py up`):
 - `GET /api/notes/items?section=<id>&status=todo` → that Section's todo Items, newest first, with `total`;
@@ -75,7 +82,10 @@ Signed-curl diary checks (`/api/diary/*`, ADR-020; a fresh server, entries made 
   today written → 3; on an empty Year `best_month` and `top_entry` are null; best Month ties go to
   more Entries, then the earlier Month; `top_entry` is null when nothing repeats, a tie goes to the
   most recent;
-- `/suggestions?prefix=Тр` → matching texts in any case, most frequent first; no prefix → the top five.
+- `/suggestions?prefix=Тр` → matching texts in any case, most frequent first; no prefix → the top five;
+  `POST /suggestions/dismiss {text}` (204, any case) → the text is gone from `/suggestions` with and without a
+  prefix, the sixth moves into the top five, `/dashboard` and `/week` are unchanged; `…/restore` brings it back;
+  an empty or over-long text is a 422.
 
 On the screen (the 🧪 seed): a first launch reads «Заметки · записи ▾» with the Section rail and one
 Section's rows; the place menu reaches both Modes of both Places and «⚙️ Расходы» in two clicks; a reload
@@ -85,7 +95,8 @@ stores the zone; a Section bar and «просрочено» on the notes Dashboa
 launch after either still opens what was remembered. In a row, «⋮», a right click and a long press open
 the same menu; «✓ Готово» there, or a swipe to the left, takes the row away at once, sends one `PATCH` and
 offers «↩ Вернуть» for 4 s; «✓» on the rail shows the «Готово» list. On the Item view the main button closes
-the Item and returns to the list. «Дневник · записи» opens on today's editor with five suggestion chips;
+the Item and returns to the list. «Дневник · записи» opens on today's editor with five suggestion chips; «×» on a chip hides it, the next one moves up and the
+toast's «↩ Вернуть» brings it back (a reload keeps it hidden);
 tapping 🔥 twice sets and clears the Mark; «Неделя ›» opens the Week, where «+» moves an Entry into «Итоги
 недели» and the Month chip opens the Month, whose «+» moves a candidate into its Summary; a Day on the diary
 Dashboard opens its Week; the back button returns from «Расходы» to the Place and Mode left. With

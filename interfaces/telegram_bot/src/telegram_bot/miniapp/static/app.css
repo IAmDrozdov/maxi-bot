@@ -39,22 +39,47 @@
 [hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
+/* The shell is as tall as Telegram's viewport and never scrolls: the title row stands, `main` (or the notes list) scrolls. */
+html, body { height: 100vh; margin: 0; overflow: hidden; }
+@supports (height: 100dvh) {
+  html, body { height: var(--tg-viewport-stable-height, 100dvh); }
+}
+
 body {
-  margin: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--panel);
   color: var(--text);
   font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
-  overscroll-behavior-y: none;
+  overscroll-behavior: none;
   touch-action: manipulation;
 }
+#back, #topbar { flex: none; }
 
 main {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   padding: 8px max(var(--gutter), env(safe-area-inset-right, 0px)) calc(32px + env(safe-area-inset-bottom, 0px))
     max(var(--gutter), env(safe-area-inset-left, 0px));
   max-width: 720px;
   margin: 0 auto;
   overflow-x: clip;
 }
+/* The notes list: only the rail and the list column scroll, each by itself; every link of the chain has min-height 0. */
+main.fixed { display: flex; flex-direction: column; padding-bottom: 0; overflow-y: hidden; }
+main.fixed > .pane, main.fixed > .pane > .screen { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+main.fixed .notes { flex: 1 1 0; min-height: 0; align-items: stretch; }
+main.fixed .rail, main.fixed .list-col, main.fixed > .pane > .overlay {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+}
+main.fixed .rail { scrollbar-width: none; }
+main.fixed > .pane > .overlay { flex: 1 1 0; }
 
 h1 { font-size: 20px; margin: 0; }
 h2 { font-size: 16px; margin: 0; }
@@ -79,7 +104,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
 .btn:active, .chip.filter:active, .icon-btn:active, .rail button:active { opacity: 0.7; }
 
-/* The title row (ADR-021): part of the page, not sticky (a sticky bar slid half under Telegram's native header on iOS) */
+/* The title row (ADR-021): pinned by the flex shell above `main`, not by `position: sticky` (a sticky bar slid half under Telegram's native header on iOS) */
 .bar { display: flex; align-items: center; gap: 8px; min-height: 40px; }
 .topbar {
   width: 100%;
@@ -90,7 +115,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .topbar:not([hidden]) ~ main { padding-top: 0; }
 .topbar .input { flex: 1; min-width: 0; }
-.back { display: block; margin: 8px max(var(--gutter), env(safe-area-inset-left, 0px)) 0; }
+.back { display: block; align-self: flex-start; margin: 8px max(var(--gutter), env(safe-area-inset-left, 0px)) 0; }
 .right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .icon-btn {
   flex: none;
@@ -133,10 +158,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .place.open .caret::after, .sec-head.open .caret::after { content: "▴"; }
 .place.open, .sec-head.open { background: var(--card); }
 
-/* The popup menu: the places, a row's actions, the Sections. It scrolls with the page it belongs to. */
+/* The popup menu: the places, a row's actions, the Sections. Fixed to the window: the page itself never scrolls. */
 .menu-veil { position: fixed; inset: 0; z-index: 19; }
 .menu {
-  position: absolute;
+  position: fixed;
   z-index: 20;
   min-width: 210px;
   max-width: calc(100% - 16px);
@@ -345,6 +370,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* Заметки: the Section rail and one Section's rows; Search results by Section; edit mode */
 .notes { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; }
 .rail { flex: none; display: flex; flex-direction: column; gap: 3px; width: 64px; }
+.rail > * { flex: none; } /* a rail taller than its column scrolls (main.fixed) instead of squeezing its buttons */
 .rail button {
   display: flex;
   flex-direction: column;
@@ -630,3 +656,9 @@ details.caption p { margin: 6px 0 0; overflow-wrap: anywhere; white-space: pre-w
 .toast button { position: relative; padding: 0; border: 0; background: transparent; color: inherit; font-weight: 600; text-decoration: underline; pointer-events: none; }
 .toast button::before { content: ""; position: absolute; inset: -12px -16px -12px -8px; } /* the whole height of the toast */
 .toast.show button { pointer-events: auto; }
+
+/* Diary suggestion chip with its «×» (hides the text from the suggestions) */
+.chip-group { display: flex; max-width: 100%; min-width: 0; gap: 4px; }
+.chip-group .chip { flex: 1 1 auto; min-width: 0; }
+.chip-x { flex: none; min-width: 36px; min-height: 36px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--link); font-size: 18px; line-height: 1; }
+.chip-x:active { opacity: 0.7; }

@@ -18,17 +18,17 @@ function labelled(box, label, type, value, attrs = {}) {
 }
 
 // Grows a textarea to its text, so a long hint reads without scrolling inside the box.
-function fitHeight(area) {
-  const y = window.scrollY; // the "auto" reset shortens the page for a moment and would move it
+function fitHeight(area, scroller) {
+  const y = scroller.scrollTop; // the "auto" reset shortens the content for a moment and would move it
   area.style.height = "auto";
   area.style.height = `${area.scrollHeight + area.offsetHeight - area.clientHeight}px`;
-  window.scrollTo(0, y);
+  scroller.scrollTop = y;
 }
 
 // Shows the form for `section` (null: a new one) in `host` instead of `list`, as a nested screen (ADR-021): Telegram's
-// back button closes it. saved() runs when a change lands, closed() when the form goes away. Returns { close }.
-export function openSectionForm({ list, host, section, saved, closed }) {
-  const listScroll = window.scrollY;
+// back button closes it; `scrolls` are the list's scrollers, restored on close. saved() runs when a change lands, closed() when the form goes away. Returns { close }.
+export function openSectionForm({ list, scrolls, host, section, saved, closed }) {
+  const listScroll = scrolls.map((node) => node.scrollTop); // display:none drops a scroller's offset, so it is put back on close
   let busy = false;
   let open = true;
 
@@ -39,7 +39,7 @@ export function openSectionForm({ list, host, section, saved, closed }) {
     host.replaceChildren();
     list.hidden = false;
     setBack(null);
-    window.scrollTo(0, listScroll);
+    scrolls.forEach((node, i) => (node.scrollTop = listScroll[i]));
     closed();
   }
 
@@ -70,7 +70,7 @@ export function openSectionForm({ list, host, section, saved, closed }) {
         maxLength: 500,
         rows: 3,
       });
-  if (hint) hint.oninput = () => fitHeight(hint);
+  if (hint) hint.oninput = () => fitHeight(hint, host);
 
   const actions = el("div", "actions");
   const save = el("button", "btn", "Сохранить");
@@ -116,8 +116,8 @@ export function openSectionForm({ list, host, section, saved, closed }) {
   host.replaceChildren(box);
   list.hidden = true;
   host.hidden = false;
-  if (hint) fitHeight(hint);
+  if (hint) fitHeight(hint, host);
   setBack(close);
-  window.scrollTo(0, 0);
+  host.scrollTop = 0;
   return { close };
 }

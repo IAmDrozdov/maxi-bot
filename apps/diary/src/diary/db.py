@@ -28,6 +28,11 @@ CREATE TABLE IF NOT EXISTS nudges (
     sent_at       TEXT NOT NULL DEFAULT (datetime('now')),
     tg_message_id INTEGER
 );
+
+CREATE TABLE IF NOT EXISTS dismissed_suggestions (
+    key          TEXT PRIMARY KEY,
+    dismissed_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
