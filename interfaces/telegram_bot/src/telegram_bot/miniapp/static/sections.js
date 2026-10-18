@@ -4,6 +4,50 @@ import { api, attempt, confirmAction, el, haptic, setBack, toast } from "./core.
 import { FROM_BOT, OTHER } from "./cards.js";
 
 const DEFAULT_COLOR = "#8a8a8a";
+// A Section's emoji is its reaction in the chat too, so only these: notes.domain.sections.MARKS (the Bot API's
+// reaction emoji without ✍ 👌 👎, which stay the Acknowledgement's own).
+const MARKS = [
+  "❤", "👍", "🔥", "🥰", "👏", "😁", "🤔", "🤯", "😱", "🤬", "😢", "🎉", "🤩", "🤮", "💩", "🙏", "🕊", "🤡",
+  "🥱", "🥴", "😍", "🐳", "❤\u200d🔥", "🌚", "🌭", "💯", "🤣", "⚡", "🍌", "🏆", "💔", "🤨", "😐", "🍓", "🍾",
+  "💋", "🖕", "😈", "😴", "😭", "🤓", "👻", "👨\u200d💻", "👀", "🎃", "🙈", "😇", "😨", "🤝", "🤗", "🫡", "🎅",
+  "🎄", "☃", "💅", "🤪", "🗿", "🆒", "💘", "🙉", "🦄", "😘", "💊", "🙊", "😎", "👾", "🤷\u200d♂", "🤷",
+  "🤷\u200d♀", "😡",
+]; // prettier-ignore
+
+// A grid of MARKS; one another Section has is shown off with its name. Returns { value() }.
+function markPicker(box, current, taken) {
+  const wrap = el("div", "field-label");
+  wrap.append(el("span", "hint", "Иконка (она же реакция бота в чате)"));
+  const grid = el("div", "mark-grid");
+  grid.setAttribute("role", "radiogroup");
+  let value = MARKS.includes(current) ? current : "";
+  const buttons = MARKS.map((mark) => {
+    const button = el("button", "mark-pick", mark);
+    button.type = "button";
+    button.setAttribute("role", "radio");
+    const owner = taken.get(mark);
+    if (owner) {
+      button.disabled = true;
+      button.title = `Уже у секции «${owner}»`;
+    }
+    button.onclick = () => {
+      value = mark;
+      paint();
+    };
+    return button;
+  });
+  function paint() {
+    buttons.forEach((button, i) => {
+      button.classList.toggle("on", MARKS[i] === value);
+      button.setAttribute("aria-checked", String(MARKS[i] === value));
+    });
+  }
+  paint();
+  grid.append(...buttons);
+  wrap.append(grid);
+  box.append(wrap);
+  return { value: () => value };
+}
 
 function labelled(box, label, type, value, attrs = {}) {
   const wrap = el("label", "field-label");
@@ -26,8 +70,8 @@ function fitHeight(area, scroller) {
 }
 
 // Shows the form for `section` (null: a new one) in `host` instead of `list`, as a nested screen (ADR-021): Telegram's
-// back button closes it; `scrolls` are the list's scrollers, restored on close. saved() runs when a change lands, closed() when the form goes away. Returns { close }.
-export function openSectionForm({ list, scrolls, host, section, saved, closed }) {
+// back button closes it; `scrolls` are the list's scrollers, restored on close; `sections` all of them (whose emoji is taken). saved() runs when a change lands, closed() when the form goes away. Returns { close }.
+export function openSectionForm({ list, scrolls, host, section, sections, saved, closed }) {
   const listScroll = scrolls.map((node) => node.scrollTop); // display:none drops a scroller's offset, so it is put back on close
   let busy = false;
   let open = true;
@@ -58,8 +102,8 @@ export function openSectionForm({ list, scrolls, host, section, saved, closed })
   const box = el("article", "detail");
   box.append(el("h2", "title", section ? "Изменить секцию" : "Новая секция"));
   const name = labelled(box, "Название", "text", section?.name ?? "", { name: "name", maxLength: 40 });
-  // The server counts characters; this is only a loose bound (UTF-16 units overcount emoji).
-  const emoji = labelled(box, "Эмодзи", "text", section?.emoji ?? "", { name: "emoji", maxLength: 32 });
+  const taken = new Map(sections.filter((other) => other.id !== section?.id).map((other) => [other.emoji, other.name]));
+  const emoji = markPicker(box, section?.emoji ?? "", taken);
   const color = labelled(box, "Цвет", "color", section?.color ?? DEFAULT_COLOR, { name: "color" });
   // The Classifier never files into From the bot, so that Section has no hint to give it.
   const fromBot = section?.slug === FROM_BOT;
@@ -75,7 +119,7 @@ export function openSectionForm({ list, scrolls, host, section, saved, closed })
   const actions = el("div", "actions");
   const save = el("button", "btn", "Сохранить");
   save.onclick = async () => {
-    const body = { name: name.value, emoji: emoji.value, color: color.value };
+    const body = { name: name.value, emoji: emoji.value(), color: color.value };
     if (hint) body.hint = hint.value;
     const done = await act(() =>
       section

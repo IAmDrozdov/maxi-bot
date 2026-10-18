@@ -6,7 +6,7 @@ Status: ready-for-agent
 > `maxi-notes` repo. Where it disagrees with the merge, the merge wins:
 > - **Bot:** no own bot. The Owner is the maxi-bot admin (`ADMIN_TELEGRAM_ID`). Capture has
 >   no card (ADR-0007, ADR-0009): the admin's text, social links, photos, videos and files are saved
->   at once and acknowledged by a reaction on the message, plus (since 2026-10-18) one reply naming the Section it landed in once filed, once per Item (ADR-0009 amended). Only a message with exactly one website
+>   at once and acknowledged by a reaction on the message. Only a message with exactly one website
 >   URL, or an agent document, gets the ask-first card with 💾 В заметки. Invitees never see notes.
 >   A saved Link has no 🤖 button.
 > - **Classifier:** OpenAI, not Claude (ticket 05). `CLASSIFIER_*` settings are `NOTES_CLASSIFIER_*`.
@@ -83,7 +83,7 @@ tidying, Section management, trash. The app is fully useful even if the sorting 
 
 - An **Item** is either a **Link** (a URL plus an optional **Annotation** — the Owner's words in the same message) or a **Note** (plain text). Its attributes: title, Source, author, caption (fetched; Classifier input, shown collapsed), Gist, thumbnail URL, Status, Placement, Reviewed, Enrichment state, the Telegram chat and message ids of its Acknowledgement, timestamps.
 - **Sections** are tags: an Item is in one or more (ADR-0002). A Section has a stable slug, a Russian name, an emoji, a colour, a hint for the Classifier (up to 500 characters: what belongs there, examples, where a neighbour's things go instead), a position, and a built-in flag. **Other** (slug `other`) is seeded, undeletable, and receives any Item that would otherwise have none — the invariant "every Item has at least one Section" is enforced in the domain layer, including when the last Section is removed from an Item and when a Section is deleted.
-- Starter Sections seeded on first run: Посмотреть 🍿 (`watch`), Почитать 📖 (`read`), Поесть 🍜 (`eat`), Купить 🛒 (`buy`), Сходить 📍 (`go`), Работа 💼 (`work`), Пет-проекты 🛠 (`pet`), Остальное 📦 (`other`), each with a hint and a distinct colour.
+- Starter Sections seeded on first run: Посмотреть 👀 (`watch`), Почитать 🤓 (`read`), Поесть 🌭 (`eat`), Купить 💅 (`buy`), Сходить 🎉 (`go`), Работа 👨‍💻 (`work`), Пет-проекты 🔥 (`pet`), Остальное 👻 (`other`) (emoji changed 2026-10-18, notes ADR-0009), each with a hint and a distinct colour.
 - **Status** (`new` / `started` / `done`) and **Placement** (`active` / `archived` / `trashed`) are independent axes (ADR-0003). No automatic archiving in v1; Trash purges after 30 days (configurable); Archive never purges.
 - **Filing is optimistic** (ADR-0001): the Item lands in the Classifier's Sections immediately with `reviewed = false`. Reviewed flips on any web edit, an explicit ✓, or a Section change from the bot keyboard.
 - **Dedupe** is by normalised URL: scheme and host lower-cased, leading `www.`/`m.` dropped, fragment dropped, tracking parameters dropped (`utm_*`, `fbclid`, `gclid`, `igsh`, `igshid`, `si`, `feature`, `ref`, `ref_src`), remaining query sorted, trailing slash stripped; `youtu.be/<id>` and YouTube Shorts normalise to `youtube.com/watch?v=<id>`; Instagram post/reel/tv paths normalise to the bare shortcode path. A repeat produces no new Item; a trashed match is restored to active; an archived match stays archived and the reply offers a return button.
@@ -113,7 +113,7 @@ sqlite in WAL mode, one file on a shared volume, read and written by both proces
 
 - Only the configured Owner id is answered; every other update is dropped and logged. Private chats only.
 - Commands: `/start` (help), `/help`, `/list` (Browse). Every other text/caption message is a Capture — no intent detection.
-- Acknowledgement text while pending: "💾 Сохранено · 📦 Остальное / ⏳ Разбираю ссылку…" (Notes: "⏳ Разбираю…"); after Enrichment: the Section line (emoji + name, joined by " · "; this early card text is superseded by the reply «👌 🍿 Посмотреть» of ADR-0009 amended 2026-10-18), the title in bold, the Gist, and "Source · author" in italics. All remote and Owner strings are HTML-escaped.
+- Acknowledgement text while pending: "💾 Сохранено · 📦 Остальное / ⏳ Разбираю ссылку…" (Notes: "⏳ Разбираю…"); after Enrichment: the Section line (emoji + name, joined by " · "), the title in bold, the Gist, and "Source · author" in italics. All remote and Owner strings are HTML-escaped.
 - Keyboard on every Acknowledgement and item card: one toggle button per Section (✅ prefix when on), then Начато / Готово / В архив, and Вернуть for archived Items. Toggling off the last Section adds Other and shows a toast saying so. Any tap sets Reviewed. Callback data stays within Telegram's 64-byte limit.
 - Dedupe reply reuses the keyboard: "🔁 Уже сохранено: …" with Sections and Status; "♻️ Достал из корзины: …" when restored; "📦 Лежит в архиве: …" with Вернуть when archived.
 - Browse: `/list` shows Sections with active counts; a Section shows pages of five active Items (new/started first, then done; newest first) with numbered buttons opening an item card and ◀️ ▶️ paging; archived and trashed Items never appear.

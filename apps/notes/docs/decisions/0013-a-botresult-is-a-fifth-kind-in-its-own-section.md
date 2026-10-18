@@ -12,7 +12,7 @@ A BotResult has no Enrichment. What it is was known when it was made: its title,
 its size or duration. It keeps those, the `file_id` and the message; cost and facts stay in the message's
 caption, one «Открыть в чате» away.
 
-The Acknowledgement goes on the bot's own message: 👌, and the button goes away.
+The Acknowledgement goes on the bot's own message: 👌 (since 2026-10-18 the emoji of «От бота», 👾; ADR-0009 amended), and the button goes away.
 
 A result split over several voice messages is one BotResult. The button is under the first part only, and
 the Item is that message.

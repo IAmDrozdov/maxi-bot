@@ -73,9 +73,9 @@ def seed_notes(path: Path) -> None:
 
     db = Database(str(path))
     db.init()
-    lab = sections.create_section(db, name="🧪 Lab", emoji="🧪", color="#7a5cff", hint="local test")
+    lab = sections.create_section(db, name="🧪 Lab", emoji="⚡", color="#7a5cff", hint="local test")
     spare = sections.create_section(
-        db, name="🧪 Spare", emoji="🧪", color="#1fa37a", hint="local test"
+        db, name="🧪 Spare", emoji="🆒", color="#1fa37a", hint="local test"
     )
     now = datetime.now(UTC)
     for i in range(6):
@@ -184,8 +184,8 @@ class DemoItem:
 
 # README demo (docs/verifying.md §2): invented, Russian, no 🧪. URLs carry fake ids on real hosts.
 DEMO_SECTIONS = (  # name, emoji, colour, hint; added to the starters of Database.init()
-    ("Учёба", "🎓", "#c2571a", "Курсы, английский, конспекты и задания"),
-    ("Дом", "🏠", "#7a5cff", "Ремонт, мебель, быт и всё для квартиры"),
+    ("Учёба", "🤯", "#c2571a", "Курсы, английский, конспекты и задания"),
+    ("Дом", "🕊", "#7a5cff", "Ремонт, мебель, быт и всё для квартиры"),
 )
 DEMO_ITEMS = (
     DemoItem(

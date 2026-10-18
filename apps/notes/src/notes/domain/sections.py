@@ -15,7 +15,22 @@ log = get_logger(__name__)
 OTHER_SLUG = "other"
 FROM_BOT_SLUG = "from_bot"  # slugify never makes an underscore, so the Owner cannot take it
 NAME_MAX = 40
-EMOJI_MAX = 8
+# A Section's emoji is also its Acknowledgement, so it must be a reaction the Bot API lets a bot set
+# (ReactionTypeEmoji, Bot API 9.x); ✍ 👌 👎 stay the Acknowledgement's own (notes ADR-0009).
+REACTIONS = (
+    "❤", "👍", "👎", "🔥", "🥰", "👏", "😁", "🤔", "🤯", "😱", "🤬", "😢", "🎉", "🤩", "🤮", "💩",
+    "🙏", "👌", "🕊", "🤡", "🥱", "🥴", "😍", "🐳", "❤‍🔥", "🌚", "🌭", "💯", "🤣", "⚡", "🍌",
+    "🏆", "💔", "🤨", "😐", "🍓", "🍾", "💋", "🖕", "😈", "😴", "😭", "🤓", "👻", "👨‍💻", "👀",
+    "🎃", "🙈", "😇", "😨", "🤝", "✍", "🤗", "🫡", "🎅", "🎄", "☃", "💅", "🤪", "🗿", "🆒", "💘",
+    "🙉", "🦄", "😘", "💊", "🙊", "😎", "👾", "🤷‍♂", "🤷", "🤷‍♀", "😡",
+)  # fmt: skip
+RESERVED_MARKS = ("✍", "👌", "👎")
+MARKS = tuple(r for r in REACTIONS if r not in RESERVED_MARKS)
+# The emoji Sections had before 2026-10-18, as the Owner chose to replace them.
+FORMER_MARKS = {
+    "💭": "🤔", "🤖": "⚡", "💻": "🆒", "📕": "🦄", "🛠": "🔥", "💼": "👨‍💻", "🛒": "💅",
+    "📖": "🤓", "🍿": "👀", "🍜": "🌭", "📍": "🎉", "📑": "👾", "👽": "👻", "📦": "👻",
+}  # fmt: skip
 HINT_MAX = 500
 COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}")
 _TRANSLIT = str.maketrans(
@@ -38,7 +53,7 @@ STARTER_SECTIONS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         "watch",
         "Посмотреть",
-        "🍿",
+        "👀",
         "#e0523f",
         "Фильмы, сериалы, видео, стримы, записи лекций и докладов — то, что владелец будет "
         "смотреть. Например: совет посмотреть фильм (даже в рилсе), YouTube-разбор, трейлер, "
@@ -47,7 +62,7 @@ STARTER_SECTIONS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         "read",
         "Почитать",
-        "📖",
+        "🤓",
         "#3f7fe0",
         "Статьи, книги, лонгриды, треды, посты, рассылки, документация — то, что владелец будет "
         "читать. Например: статья на Хабре или telegra.ph, тред, совет прочитать книгу. Пост про "
@@ -56,7 +71,7 @@ STARTER_SECTIONS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         "eat",
         "Поесть",
-        "🍜",
+        "🌭",
         "#e09a3f",
         "Рестораны, кафе, бары, кофейни, рецепты, продукты и напитки. Например: рилс с рецептом, "
         "кафе, которое советуют, обзор бара. Заведение, где поесть или выпить, — сюда, а не в "
@@ -65,7 +80,7 @@ STARTER_SECTIONS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         "buy",
         "Купить",
-        "🛒",
+        "💅",
         "#8f3fe0",
         "Вещи, которые хочется купить или подарить: товары, гаджеты, одежда, мебель, подписки. "
         "Например: ссылка на маркетплейс, обзор наушников, идея подарка.",
@@ -73,7 +88,7 @@ STARTER_SECTIONS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         "go",
         "Сходить",
-        "📍",
+        "🎉",
         "#3fb8a0",
         "Места и события: выставки, концерты, спектакли, музеи, парки, прогулки, поездки, города "
         "и страны. Например: афиша, место для прогулки, идея для отпуска. Рестораны и кафе — в "
@@ -82,7 +97,7 @@ STARTER_SECTIONS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         "work",
         "Работа",
-        "💼",
+        "👨‍💻",
         "#5c6b7a",
         "Полезное для основной работы: инженерные практики, инструменты для команды, процессы, "
         "менеджмент, карьера, собеседования. Например: статья про code review, совет по найму. "
@@ -91,18 +106,18 @@ STARTER_SECTIONS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         "pet",
         "Пет-проекты",
-        "🛠",
+        "🔥",
         "#3fa04a",
         "Свои проекты и идеи, что сделать самому: код, библиотеки, репозитории, туториалы, "
         "ИИ-модели и агенты, которые хочется попробовать. Например: проект на GitHub, идея своего "
         "сервиса или курса. Своя идея важнее темы ссылки. Если у проекта есть своя секция, клади "
         "туда, а не сюда.",
     ),
-    (FROM_BOT_SLUG, "От бота", "📑", "#4f8a8b", ""),  # no hint: the Classifier never sees it
+    (FROM_BOT_SLUG, "От бота", "👾", "#4f8a8b", ""),  # no hint: the Classifier never sees it
     (
         OTHER_SLUG,
         "Остальное",
-        "📦",
+        "👻",
         "#8a8a8a",
         "Всё, что не подходит ни под одну секцию: мысли, цитаты, личные заметки и дела, юмор, "
         "новости.",
@@ -177,8 +192,42 @@ def seed_sections(db: Database) -> None:
         if not conn.execute("SELECT 1 FROM sections WHERE slug=?", (FROM_BOT_SLUG,)).fetchone():
             from_bot = next(s for s in STARTER_SECTIONS if s[0] == FROM_BOT_SLUG)
             _insert_before_other(conn, from_bot, is_builtin=True)
+        _fix_marks(conn)
     if refreshed:
         log.info("notes db: gave %d built-in sections the new starter hint", refreshed)
+
+
+def mark_of(emoji: str) -> str:
+    """The emoji as the Bot API spells a reaction: no variation selector."""
+    return emoji.strip().replace("\ufe0f", "")
+
+
+def _fix_marks(conn: sqlite3.Connection) -> None:
+    """Give every Section a distinct reaction emoji: a former one maps through FORMER_MARKS, else the first free."""
+    rows = conn.execute("SELECT id, name, emoji FROM sections ORDER BY position, id").fetchall()
+    kept: dict[
+        int, str
+    ] = {}  # valid emoji are claimed first, so a remap never takes one the Owner chose
+    for row in rows:
+        mark = mark_of(row["emoji"])
+        if mark in MARKS and mark not in kept.values():
+            kept[int(row["id"])] = mark
+    used = set(kept.values())
+    changes: list[tuple[str, int]] = []
+    for row in rows:
+        mark = kept.get(int(row["id"]))
+        if mark is None:
+            wanted = FORMER_MARKS.get(mark_of(row["emoji"]))
+            mark = (
+                wanted if wanted and wanted not in used else next(m for m in MARKS if m not in used)
+            )
+            used.add(mark)
+        if mark != row["emoji"]:
+            changes.append((mark, int(row["id"])))
+            log.info(
+                "notes db: section %r gets the emoji %s (was %r)", row["name"], mark, row["emoji"]
+            )
+    conn.executemany("UPDATE sections SET emoji=? WHERE id=?", changes)
 
 
 def _insert_before_other(
@@ -220,18 +269,30 @@ def slugify(name: str) -> str:
 
 
 def _validated(name: str, emoji: str, color: str, hint: str) -> tuple[str, str, str, str]:
-    name, emoji, hint = name.strip(), emoji.strip(), hint.strip()
+    name, emoji, hint = name.strip(), mark_of(emoji), hint.strip()
     if not name:
         raise SectionError("Назови секцию")
     if len(name) > NAME_MAX:
         raise SectionError(f"Название длиннее {NAME_MAX} символов")
-    if len(emoji) > EMOJI_MAX:
-        raise SectionError("Слишком длинный эмодзи")
+    if not emoji:
+        raise SectionError("Выбери иконку")
+    if emoji not in MARKS:
+        raise SectionError("Эта иконка не годится в реакцию Telegram — выбери из списка")
     if not COLOR_RE.fullmatch(color):
         raise SectionError("Цвет должен быть вида #a1b2c3")
     if len(hint) > HINT_MAX:
         raise SectionError(f"Подсказка длиннее {HINT_MAX} символов")
     return name, emoji, color, hint
+
+
+def _mark_owner(
+    conn: sqlite3.Connection, emoji: str, *, except_id: int | None = None
+) -> str | None:
+    """The name of another Section that already has this emoji."""
+    row = conn.execute(
+        "SELECT name FROM sections WHERE emoji=? AND id IS NOT ?", (emoji, except_id)
+    ).fetchone()
+    return row["name"] if row else None
 
 
 def _name_taken(conn: sqlite3.Connection, name: str, *, except_id: int | None = None) -> bool:
@@ -252,6 +313,8 @@ def create_section(
     with db.session() as conn:
         if _name_taken(conn, name):
             raise SectionError(f"Секция «{name}» уже есть")
+        if owner := _mark_owner(conn, emoji):
+            raise SectionError(f"Иконка {emoji} уже у секции «{owner}»")
         twin = conn.execute("SELECT name FROM sections WHERE slug=?", (slug,)).fetchone()
         if twin:
             raise SectionError(f"Название слишком похоже на секцию «{twin['name']}»")
@@ -285,6 +348,8 @@ def update_section(
         )
         if _name_taken(conn, name, except_id=section_id):
             raise SectionError(f"Секция «{name}» уже есть")
+        if owner := _mark_owner(conn, emoji, except_id=section_id):
+            raise SectionError(f"Иконка {emoji} уже у секции «{owner}»")
         conn.execute(
             "UPDATE sections SET name=?, emoji=?, color=?, hint=? WHERE id=?",
             (name, emoji, color, hint, section_id),

@@ -43,8 +43,6 @@ def _database(path: Path | None) -> Iterator[Database]:
 
 async def _print_notify(notice: Notice) -> None:
     print(f"acknowledge: {acknowledgement_of(notice.item)}")
-    names = " · ".join(f"{s.emoji} {s.name}" for s in notice.item.sections)
-    print(f" sections: {names}")
     print(f" due line: {notice.due}")
 
 

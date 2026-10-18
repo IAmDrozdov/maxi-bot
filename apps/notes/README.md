@@ -17,7 +17,7 @@ it: a BotResult, kept in the built-in Section «От бота» with no Enrichme
 | `interfaces/telegram_bot/…/handlers/notes.py` | the Capture Paths (text, file, voice), 💾 on a card and under a delivered result, Reminder buttons; 🤖 and ↩️ only for buttons on old messages |
 | `interfaces/telegram_bot/…/notes_capture.py` | the bot's Capture adapter: message → `notes.capture.capture` → reaction, Due line, background Enrichment |
 | `interfaces/telegram_bot/…/notes_runtime.py` | `NotesRuntime`: the Database, Classifier and the background loops (enrichment, sweeper, show, reminders) |
-| `interfaces/telegram_bot/…/notes_ui.py` | Acknowledgement reactions (✍ 👌 👎), the Sections line, "show in chat" and Reminders (the Due line, the reminder) |
+| `interfaces/telegram_bot/…/notes_ui.py` | Acknowledgement reactions (✍, the Section's emoji, 👎), "show in chat" and Reminders (the Due line, the reminder) |
 | `interfaces/telegram_bot/…/miniapp/` | the Mini App: notes API and UI (`telegram-miniapp`) |
 
 ## Run

@@ -201,14 +201,11 @@ async def settle(
     *,
     shown: Acknowledgement | None,
 ) -> None:
-    """Show what the Capture decided: the Due and a duplicate's Sections line, the reaction (unless `shown` is it), Enrichment."""
-    item = captured.item
-    names = captured.outcome == "existing" and item.enrichment_status == "done"
-    if captured.due is not None or names:
-        await notes_ui.announce(
-            bot, item, due=captured.due, with_sections=names, reply_to=message_id
-        )
+    """Show what the Capture decided: the Due line, the reaction (unless `shown` already is it), and Enrichment."""
+    if captured.due is not None:
+        await notes_ui.announce_due(bot, captured.item, captured.due, reply_to=message_id)
     if captured.acknowledgement != shown:
-        await notes_ui.react(bot, chat_id, message_id, notes_ui.EMOJI[captured.acknowledgement])
+        reaction = notes_ui.reaction_of(captured.item, captured.acknowledgement)
+        await notes_ui.react(bot, chat_id, message_id, reaction)
     if captured.enrich:
         notes.enrich_later(bot, captured.item.id)

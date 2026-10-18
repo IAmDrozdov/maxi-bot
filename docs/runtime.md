@@ -100,16 +100,18 @@ The three Capture Paths (`direct_text_handler`, `file_handler`, `voice_handler`)
 `notes_capture.capture_message`; 💾 on a card (`save_handler`) takes the card's `Draft` from the
 card book. Both reach `notes.capture.capture` (a `Text` or an `Attachment` with an `Origin`): one
 Item per Capture, `capture_link` with dedupe for exactly one URL, else a Note with the whole text,
-a File or a Voice. `notes_capture.settle` then shows what the Capture decided (the Due line, a duplicate's Sections line, the
+a File or a Voice. `notes_capture.settle` then shows what the Capture decided (the Due line, the
 reaction) and `NotesRuntime.enrich_later` (`telegram_bot/notes_runtime.py`) starts
-`notes.enrich.pipeline.enrich_item`. The bot's message of its own is one reply per Item, the Sections line («👌 🍿 Посмотреть»,
-`notes_ui.sections_line`), sent from `notify` once Enrichment has filed the Item (notes ADR-0009
-amended 2026-10-18), plus the Reminder (notes ADR-0011, below) and the diary Nudge (ADR-020 amended,
-«Дневник» below). The Acknowledgement itself is still the reaction on the Owner's message
-(`notes_ui.react`): ✍ working, 👌 in notes, 👎 take a look. A duplicate gets 👌 at once with no
-Enrichment (👎 if its Enrichment had failed); a duplicate whose Enrichment is `done` also gets the
-Sections line at once, as a reply under the new message, and a pending or failed duplicate gets none, and keeps its Status, `done` included, unless its own words ask for a reminder (below). A
-Capture that throws, or notes being down, gets 👎. Enrichment:
+`notes.enrich.pipeline.enrich_item`. The bot sends no message of its own (a Reminder and the diary Nudge are the exceptions): the Acknowledgement
+is its one reaction on the Owner's message (`notes_ui.react`, `notes_ui.reaction_of`): ✍ working, then
+the emoji of the Item's first Section once it is in notes (👌 if it has none), 👎 take a look (notes
+ADR-0009, amended 2026-10-18). A Section's emoji must be one of the Bot API's reaction emoji
+(`sections.MARKS`), distinct per Section, so it reads the same in the rail and in the chat. A
+duplicate gets its Section's emoji at once with no Enrichment (👌 while its Enrichment is still
+pending, 👎 if it had failed), and keeps its Status, `done` included, unless its own words ask for a
+reminder (below). A Capture that throws, or notes being down, gets 👎. The bot writes a message of its
+own only for Reminders (notes ADR-0011, below) and for the diary Nudge (ADR-020 amended, «Дневник»
+below). Enrichment:
 
 1. The provider fetch runs through the SSRF guard: YouTube and TikTok oEmbed, the Instagram
    captioned embed page, or a generic page. A Voice is downloaded from Telegram instead (the bot
@@ -121,13 +123,9 @@ Capture that throws, or notes being down, gets 👎. Enrichment:
 3. `store_enrichment` saves the result and `reminders.fill_from_filing` decides the Due (it fills an
    empty Due only, and one not after the Capture moment is dropped). It returns a `Notice`, and
    `notify(notice)` (`NotesRuntime.notify_for`) sets the reaction from `enrichment_status` on
-   `tg_message_id`. When the Item is `saved` and `items.tg_ack_message_id` is NULL it also replies to
-   the Capture with the Sections line (`notes_ui.announce`, silent), and `items.remember_ack` stores
-   the sent message id so it is sent once per Item. When the Notice carries a Due (Enrichment filled
-   one that is still ahead) the same reply gets a second line «⏰ пт, 10 окт, 19:00», a web_app
-   `📅 Перенести` and sound (one message, not two); a Due alone on an already-acknowledged Item is
-   sent as the ⏰ line only. A failed Enrichment (👎) sends no line; a later successful re-enrich
-   sends it, because no id was recorded.
+   `tg_message_id` (the Section's emoji once filed); when the Notice carries a Due (Enrichment filled
+   one that is still ahead) the bot also replies to the Capture with «⏰ пт, 10 окт, 19:00» and a
+   web_app `📅 Перенести`.
 
 Failures go to `schedule_retry` (backoff 1 min → 12 h, then `failed`). The sweeper
 (`NOTES_ENRICH_SWEEP_SECONDS`) retries anything due and anything a restart interrupted; a retry
@@ -142,8 +140,7 @@ message a BotResult: `notes_capture.bot_result_of` reads the file facts off the 
 title and Workflow id from the job log (`db.job_title`; with no row, the file name or the caption's first
 line), and `notes.capture.capture` takes it as a `BotResult` payload. The Item is filed in «От бота»
 (`from_bot`, built in, never deleted, never the Classifier's choice) and has no Enrichment. The button
-goes away and 👌 lands on the bot's own message; the Sections line is the callback toast
-(«👌 📑 От бота»), not a chat message; a second press answers «Уже в заметках · 📑 От бота», and a
+goes away and the emoji of «От бота» (👾) lands on the bot's own message; a second press answers «Уже в заметках», and a
 partial unique index on the chat and message keeps it to one Item. A failed save keeps the button. A
 split audio result gets the button under part 1 once every part is sent, so its BotResult is part 1. The Owner may file a
 BotResult under other Sections too; `sections.refile` never takes it out of «От бота». «Открыть в
@@ -203,7 +200,7 @@ Funnel costs 250–450 ms a request, so the app is built to need few requests (A
   the first ten characters of the name; dimmed when it has nothing to do), then «✓» and «✏️», captioned the
   same way. The rest of the width is the selected Section's List, newest first, paged by «Ещё»; an Item under
   several Sections shows in each. The Section's name and the count for the Status shown (`todo_count` /
-  `done_count`) stand in the title row after the Place button («Заметки · записи ▾ 💼 Работа 7»): the name is
+  `done_count`) stand in the title row after the Place button («Заметки · записи ▾ 👨‍💻 Работа 7»): the name is
   cut with «…» when the row is short (at 320 px only the count is left), and «✓» comes before the count on the
   «Готово» list.
   «✓» on the rail shows «Готово» instead of «Сделать» (one Status
@@ -286,8 +283,7 @@ HMAC against `MINIAPP_INIT_SECRET`, requires `auth_date` under 24 h and admits o
 `OWNER_TELEGRAM_ID` (401 or 403). The API only parses and serialises; the rules stay in
 `apps/notes`. A re-enrich from the app flips the Item to `pending` and the bot's sweeper does
 the work. Edits made in the app do not change the reaction in the chat.
-A re-enrich re-sets the reaction but sends no second Sections line (`tg_ack_message_id` is already
-set; an Item saved before 2026-10-18 has none, so its first re-enrich sends one line); a Section changed in the app is not announced in the chat.
+A re-enrich sets the reaction again, to the Section the new Enrichment chose.
 
 ## State that lives only in memory
 

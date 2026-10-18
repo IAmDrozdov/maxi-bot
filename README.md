@@ -69,9 +69,9 @@ A failed job answers one question first: wait, or go fix something? Before it bl
 
 ### Send anything, it lands in notes
 
-Everything that is not a priced document or a single website link is saved at once. The bot's reply is a reaction on your message: ✍ working, 👌 saved, 👎 take a look. Once the note is filed it also replies with the Section it landed in, e.g. «👌 🍿 Посмотреть»; a reminder adds its Due to that reply (see Reminders). That covers text, several links, social links, photos, videos, files, voice messages and round videos; a forwarded message keeps its sender. A website link gets the priced card, with `💾 В заметки` on top.
+Everything that is not a priced document or a single website link is saved at once. The bot's reply is a reaction on your message: ✍ working, then the icon of the section it was filed in, 👎 take a look. A reminder also gets one text reply, with its Due (see Reminders). That covers text, several links, social links, photos, videos, files, voice messages and round videos; a forwarded message keeps its sender. A website link gets the priced card, with `💾 В заметки` on top.
 
-<img src="docs/images/readme/chat-capture-reminder.png" alt="A note sent to the bot: your message with a 👌 reaction, and the bot's reply with the reminder's Due «⏰ ср, 14 окт, 10:00» and a «📅 Перенести» button" width="520">
+<img src="docs/images/readme/chat-capture-reminder.png" alt="A note sent to the bot: your message with a reaction, and the bot's reply with the reminder's Due «⏰ ср, 14 окт, 10:00» and a «📅 Перенести» button" width="520">
 
 Behind the reaction (`apps/notes`, ADR-015), an Item is one of five kinds (link, note, file, voice, bot_result). The bot fetches a title, author and caption (YouTube, Instagram, TikTok or any web page), cuts a thumbnail, transcribes a voice message, and a classifier files the Item into one to three Sections and writes a short Russian summary, at about $0.002 an Item. The same link twice makes one Item, and a failed step is retried with backoff.
 

@@ -13,7 +13,6 @@ import aiohttp
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 
-from notes.capture import acknowledgement_of
 from notes.classify import make_classifier
 from notes.classify.port import Classifier
 from notes.db import Database
@@ -51,22 +50,12 @@ class NotesRuntime:
         task.add_done_callback(self.tasks.discard)
 
     def notify_for(self, bot: Bot) -> Notify:
-        """What Enrichment tells the chat: the reaction, the Sections line once, and the Due line."""
+        """What Enrichment tells the chat: the reaction, and the Due line when the domain says so."""
 
         async def notify(notice: Notice) -> None:
-            item = notice.item
-            await notes_ui.acknowledge(bot, item)
-            first = acknowledgement_of(item) == "saved" and item.tg_ack_message_id is None
-            if not first and notice.due is None:
-                return
-            sent = await notes_ui.announce(bot, item, due=notice.due, with_sections=first)
-            if first and sent is not None:
-                try:
-                    await asyncio.to_thread(items.remember_ack, self.db, item.id, sent)
-                except Exception:  # worst case the line is sent again on a re-enrich
-                    log.exception(
-                        "notes: could not remember the Sections reply of item %s", item.id
-                    )
+            await notes_ui.acknowledge(bot, notice.item)
+            if notice.due is not None:
+                await notes_ui.announce_due(bot, notice.item, notice.due)
 
         return notify
 

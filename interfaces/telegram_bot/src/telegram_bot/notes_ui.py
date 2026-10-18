@@ -1,4 +1,4 @@
-"""Notes presentation: the Acknowledgement reaction and Sections line, "show in chat" and Reminders, in Russian (ADR-015, 0009, 0011)."""
+"""Notes presentation: the Acknowledgement reaction (✍, the Section's emoji, 👎), "show in chat" and Reminders, in Russian (ADR-015, 0009, 0011)."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ from aiogram.types import (
 )
 
 from notes.capture import Acknowledgement, acknowledgement_of
+from notes.domain import sections
 from notes.domain.items import Item
 from shared.config import settings
 from shared.obs import get_logger
@@ -34,8 +35,8 @@ HELP = (
     "\n\n📌 <b>Notes</b>: text, links, files, voice and round video messages are "
     "saved straight away. A single website link gets a card — 💾 save to notes, one of the agents "
     "above, or cancel; to run an agent on your own text, send it as a .txt file. The bot reacts "
-    "to your message: ✍ working, 👌 saved, 👎 take a look, and once filed replies with the "
-    "section it landed in. Saved items are filed into sections; "
+    "to your message: ✍ working, then the icon of the section it was filed in (👌 if it has none), "
+    "👎 take a look. Saved items are filed into sections; "
     "browse and sort them in the app (the 📒 button next to the message field)."
 )
 WORKING, DONE, LOOK = "✍", "👌", "👎"
@@ -70,11 +71,22 @@ async def react(bot: Bot, chat_id: int, message_id: int, emoji: str) -> None:
         log.warning("message %s: could not react %s: %s", message_id, emoji, exc)
 
 
+def reaction_of(item: Item, acknowledgement: Acknowledgement | None = None) -> str:
+    """✍ or 👎; once saved, the emoji of the Item's first Section (👌 if none fits a reaction)."""
+    acknowledgement = acknowledgement or acknowledgement_of(item)
+    # A still-pending duplicate is only provisionally in Other: plain 👌 until its Enrichment lands.
+    if acknowledgement == "saved" and item.enrichment_status != "pending" and item.sections:
+        mark = sections.mark_of(item.sections[0].emoji)
+        if mark in sections.MARKS:
+            return mark
+    return EMOJI[acknowledgement]
+
+
 async def acknowledge(bot: Bot, item: Item) -> None:
-    """The reaction on the Item's Capture message that matches its Enrichment."""
+    """The reaction on the Item's Capture message that matches its Enrichment and Section."""
     if item.tg_chat_id is None or item.tg_message_id is None:
         return
-    await react(bot, item.tg_chat_id, item.tg_message_id, EMOJI[acknowledgement_of(item)])
+    await react(bot, item.tg_chat_id, item.tg_message_id, reaction_of(item))
 
 
 WEEKDAYS = ("пн", "вт", "ср", "чт", "пт", "сб", "вс")
@@ -133,37 +145,12 @@ async def send_reminder(bot: Bot, item: Item) -> bool:
     return True
 
 
-def section_names(item: Item) -> str:
-    """The Sections an Item is filed in, as «🍿 Посмотреть · 📦 Остальное»."""
-    return " · ".join(f"{s.emoji} {s.name}".strip() for s in item.sections)
-
-
-def sections_line(item: Item) -> str | None:
-    """«👌 🍿 Посмотреть»: the Acknowledgement plus where the Item landed; None with no Section."""
-    names = section_names(item)
-    return f"{DONE} {names}" if names else None
-
-
-async def announce(
-    bot: Bot,
-    item: Item,
-    *,
-    due: datetime | None = None,
-    with_sections: bool = False,
-    reply_to: int | None = None,
-) -> int | None:
-    """One reply to the Capture (or `reply_to`): the Sections line and/or the Due. Returns its id, None if none sent."""
+async def announce_due(bot: Bot, item: Item, due: datetime, *, reply_to: int | None = None) -> None:
+    """One line naming the Due the domain just set, replying to the Capture or to `reply_to`."""
     chat = item.tg_chat_id
     if chat is None:
-        return None
-    lines: list[str] = []
-    if with_sections and (line := sections_line(item)):
-        lines.append(escape(line))
-    if due is not None:
-        lines.append(f"⏰ {format_due(due)}")
-    if not lines:
-        return None
-    link = miniapp_link(item.id) if due is not None else None
+        return
+    link = miniapp_link(item.id)
     markup = (
         InlineKeyboardMarkup(
             inline_keyboard=[
@@ -173,6 +160,7 @@ async def announce(
         if link
         else None
     )
+    text = f"⏰ {format_due(due)}"
     target = reply_to if reply_to is not None else item.tg_message_id
     reply = (
         ReplyParameters(message_id=target, allow_sending_without_reply=True)
@@ -180,17 +168,9 @@ async def announce(
         else None
     )
     try:
-        sent = await bot.send_message(
-            chat,
-            "\n".join(lines),
-            reply_markup=markup,
-            reply_parameters=reply,
-            disable_notification=due is None,  # a Sections line alone is silent, like the reaction
-        )
+        await bot.send_message(chat, text, reply_markup=markup, reply_parameters=reply)
     except TelegramAPIError as exc:
-        log.warning("item %s: could not announce: %s", item.id, exc)
-        return None
-    return sent.message_id
+        log.warning("item %s: could not announce the Due: %s", item.id, exc)
 
 
 async def show_in_chat(bot: Bot, item: Item) -> None:

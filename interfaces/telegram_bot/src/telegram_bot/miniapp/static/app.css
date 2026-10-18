@@ -420,6 +420,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .sec-head .n { color: var(--hint); font-weight: 400; font-variant-numeric: tabular-nums; }
 .sec-head .st { color: var(--good); font-weight: 400; }
 .sec-head.overdue .name { color: var(--danger); }
+.groups { display: flow-root; } /* «Загрузка…»'s margin would collapse through it and shift the list */
 .groups:not(.editing) > .group + .group { margin-top: 10px; }
 .list-col .empty { padding: 12px 8px; }
 .notice { margin: 0 4px 10px; }
@@ -662,3 +663,7 @@ details.caption p { margin: 6px 0 0; overflow-wrap: anywhere; white-space: pre-w
 .chip-group .chip { flex: 1 1 auto; min-width: 0; }
 .chip-x { flex: none; min-width: 36px; min-height: 36px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--link); font-size: 18px; line-height: 1; }
 .chip-x:active { opacity: 0.7; }
+.mark-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 4px; }
+.mark-pick { min-height: 40px; border: 1px solid transparent; border-radius: 10px; background: transparent; font-size: 22px; line-height: 1; }
+.mark-pick.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
+.mark-pick:disabled { opacity: 0.25; cursor: default; }

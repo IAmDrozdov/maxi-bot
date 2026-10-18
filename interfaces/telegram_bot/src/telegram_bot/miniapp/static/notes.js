@@ -715,6 +715,7 @@ export async function mountNotes(root, ctx) {
       scrolls: [listCol, rail],
       host: overlay,
       section,
+      sections: state.sections,
       saved: () => {
         state.dirty = true;
         settle(); // the answer may come after the form was closed
