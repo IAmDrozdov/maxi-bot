@@ -24,7 +24,22 @@ from shared.translate import TRANSLATION_OUTPUT_CHAR_FACTOR, estimate_translatio
 
 from .config import PdfTtsConfig
 from .graph import build_graph
+from .narration import NARRATION_CHARS, estimate_narration
+from .speech import Figure, is_markdown_source, plain_speakable, split_segments
 from .state import PdfTtsState
+
+
+def _prose_and_figures(chapters: list[str], filename: str) -> tuple[list[str], list[Figure]]:
+    """Speakable prose per chapter (figures left out) and every figure, in order."""
+    if not is_markdown_source(filename):
+        return [plain_speakable(c) for c in chapters], []
+    prose: list[str] = []
+    figures: list[Figure] = []
+    for chapter in chapters:
+        segments = split_segments(chapter)
+        prose.append("\n\n".join(s.text for s in segments if s.figure is None and s.text))
+        figures.extend(s.figure for s in segments if s.figure is not None)
+    return prose, figures
 
 
 def preview(settings: Settings, config: PdfTtsConfig, source: Source) -> Preview:
@@ -40,11 +55,17 @@ def preview(settings: Settings, config: PdfTtsConfig, source: Source) -> Preview
         )
     except DocumentError as exc:
         return Preview.failed(source.filename, str(exc))
+    _, figures = _prose_and_figures(parsed.chapters, source.filename)
     return Preview(
         title=source.filename,
         char_count=parsed.char_count,
         chapter_count=len(parsed.chapters),
-        payload={"filename": source.filename, "text": parsed.text, "chapters": parsed.chapters},
+        payload={
+            "filename": source.filename,
+            "text": parsed.text,
+            "chapters": parsed.chapters,
+            "figure_count": len(figures),
+        },
     )
 
 
@@ -52,15 +73,23 @@ def estimate(settings: Settings, config: PdfTtsConfig, preview: Preview) -> Esti
     _ = settings
     if preview.error:
         return Estimate.failed(preview.error)
-    text = str(preview.payload.get("text") or "")
     chapters = cast(list[str], preview.payload.get("chapters") or [])
+    filename = str(preview.payload.get("filename") or "")
+    prose, figures = _prose_and_figures(chapters, filename)
     lines: list[CostLine] = []
-    spoken = text
+    approximate = False
+    narrated = min(len(figures), config.narration.max_figures)
+    if figures:
+        narration_cost, approximate = estimate_narration(config.narration, figures)
+        lines.append(narration_cost)
+    # Narrations are not written yet: stand in for them with text of a typical length.
+    spoken_chapters = [*prose, "x" * (narrated * NARRATION_CHARS)] if narrated else prose
+    spoken = "\n\n".join(spoken_chapters)
     if config.translation is not None:
-        lines.append(estimate_translation(chapters, config.translation).cost)
-        spoken = "x" * int(len(text) * TRANSLATION_OUTPUT_CHAR_FACTOR)
+        lines.append(estimate_translation(spoken_chapters, config.translation).cost)
+        spoken = "x" * int(len(spoken) * TRANSLATION_OUTPUT_CHAR_FACTOR)
     lines.append(estimate_speech(spoken, config.speech).cost)
-    return Estimate(cost=Cost.of(*lines))
+    return Estimate(cost=Cost.of(*lines), approximate=approximate)
 
 
 def run(settings: Settings, config: PdfTtsConfig, preview: Preview, progress: Progress) -> Result:

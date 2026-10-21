@@ -89,6 +89,7 @@ def system_prompt(spec: TranslateSpec) -> str:
     return (
         f"Translate from {spec.source_language} to {spec.target_language}. "
         "Preserve meaning, structure, and formatting. "
+        "Leave fenced code blocks (``` ... ```) and every URL exactly as they are, untranslated. "
         "Output only the translation."
     )
 

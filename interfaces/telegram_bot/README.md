@@ -79,7 +79,7 @@ uv run telegram-miniapp --host 127.0.0.1 --port 8083  # Mini App server (Funnel 
 Env (via `shared.config.Settings` / `.env`): `TELEGRAM_BOT_TOKEN`,
 `OWNER_TELEGRAM_ID`, `TELEGRAM_DB_PATH`, `OPENAI_API_KEY`, `BOT_MINIAPP_URL`, plus the operator policy
 `BOT_LANGUAGES`, `BOT_DEFAULT_SOURCE_LANGUAGE`, `BOT_DEFAULT_TARGET_LANGUAGE`,
-`BOT_MAX_JOB_COST_USD` (defaults in `shared/config.py`;
+`BOT_MAX_JOB_COST_USD`, `BOT_POST_VOICE_MIN_WORDS` (defaults in `shared/config.py`;
 the Owner's `/settings` choices override the language defaults). Without `OWNER_TELEGRAM_ID`
 neither process starts.
 
@@ -98,6 +98,14 @@ The Owner's text, files and voice messages are Captured at once; a single websit
 usual card with 💾 В заметки on top, and 💾 saves it as a notes Item (`apps/notes`, ADR-015). 💾 under a
 delivered result puts that message aside as a BotResult in the Section «От бота» (notes ADR-0013). The
 routing table, card lifecycle and notes path are in `docs/runtime.md`.
+
+## Voice offer (ADR-024)
+
+A text of at least `BOT_POST_VOICE_MIN_WORDS` words (default 200, URLs not counted, 0 = off), forwarded or
+the Owner's own, is saved to notes like any text; the bot then replies with one priced `[🔊 Audio …] [✖️]`
+offer. The voice-over never translates, whatever "Translate first" says. ✖️, or the Owner's next message
+of any kind (or a new card), deletes the offer, unless Run has made it a job. Captions are not counted. The mechanics are in `docs/runtime.md` "The
+card lifecycle".
 
 ## Mini App (ADR-016)
 

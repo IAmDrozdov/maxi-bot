@@ -40,7 +40,8 @@ thin-adapter rule (ADR-005).
    Invitees see no change. A card that was cancelled or saved while it was still being
    priced is no longer overwritten when pricing finishes, which also fixes an old Cancel
    race for everyone. Narrowed by notes ADR-0009: only a single website link gets the card;
-   💾 deletes it and the Acknowledgement is a reaction.
+   💾 deletes it and the Acknowledgement is a reaction. Narrowed by ADR-024 (2026-10-21): a text of
+   `BOT_POST_VOICE_MIN_WORDS` or more words is saved and offered a voice-over, not carded, whatever link it holds.
 5. **Storage.** A separate sqlite file (`NOTES_DB_PATH`, `/data/notes.sqlite3` in
    production) on the existing `appdata` volume. Notes and the bot's usage tables share
    nothing.

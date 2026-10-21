@@ -129,7 +129,7 @@ from aiogram.types import Chat, Message
 from telegram_bot import db
 from telegram_bot.access import AccessMiddleware
 from telegram_bot import notes_runtime
-from telegram_bot.cards import CardBook
+from telegram_bot.cards import CardBook, DropOfferMiddleware
 from telegram_bot.handlers import setup_routers
 from telegram_bot.worker import JobQueue
 
@@ -151,10 +151,17 @@ bot = Bot(token="42:TEST", session=(tg := Rec()))
 dp = Dispatcher(); dp["queue"] = JobQueue()
 dp["notes"] = notes_runtime.build_runtime()  # or NotesRuntime(db=..., http=fake, classifier=FakeClassifier())
 dp["cards"] = CardBook(intake=Stub())        # Stub: the Intake port below
-dp.update.outer_middleware(AccessMiddleware()); setup_routers(dp)
+dp.update.outer_middleware(AccessMiddleware())
+dp.message.outer_middleware(DropOfferMiddleware())   # from telegram_bot.cards; as in __main__.py
+setup_routers(dp)
 # await dp.feed_update(bot, Update(update_id=1, message=Message(..., from_user=User(id=100,...))))
 # 100 is the Owner; any other id is a stranger
 ```
+
+Voice-offer staleness compares message ids: feed Owner `message_id`s that keep rising past the Rec's
+bot ids (`mid = tg.mid + 1`, then set `tg.mid = mid`), so they order correctly against each other and
+against the status id of a card opened from a button; out of order, an offer is silently stale.
+For a burst (two Owner messages before any bot reply), reserve both ids first (`tg.mid += 2`).
 
 - **Network:** stub it at the `Intake` seam. `dp["cards"] = CardBook(intake=Stub())` where
   `Stub.scrape` returns a `ScrapedArticle` and `Stub.preview` a `Preview`; YouTube links then work
@@ -167,6 +174,10 @@ dp.update.outer_middleware(AccessMiddleware()); setup_routers(dp)
     another id record no call and add no database row, and neither does anything sent in a group;
   - the Owner's commands still reach their routers;
   - a single website link's card has 💾; an agent document's card and a command's link card have none;
+  - a text of `BOT_POST_VOICE_MIN_WORDS` words gets a reaction and one offer reply (`[🔊 …] [✖️]`); ✖️
+    and the Owner's next message delete it, Run keeps it as the job status, and a link or document card
+    open at the time keeps its Run (the offer has its own slot); in a burst (a link or document, then a
+    long text, before any bot reply) the long text still gets its offer. A file ending `.html` is a document card;
   - `routing.route(Incoming(...))` is a plain-value check, no Dispatcher needed: one assertion per
     `Kind`, with no sender to pass, including a captioned audio (`media="other"`) → `ignore`.
 - **Reminders (notes ADR-0011):** the fake Classifier reads «напомни 2026-10-10 19:00» from a Note,

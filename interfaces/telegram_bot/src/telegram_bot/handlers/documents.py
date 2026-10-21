@@ -14,9 +14,9 @@ from shared.job import DocumentSource, Estimate
 from shared.obs import get_logger
 
 from .. import db, eta, routing
-from ..cards import CardBook, fmt_cost
+from ..cards import CardBook, config_for, delete_message, fmt_cost
 from ..catalog import MAX_JOB_COST_USD, TG_DOWNLOAD_LIMIT
-from ..keyboards import JobCB, MenuCB, editable, root_menu
+from ..keyboards import JobCB, MenuCB, editable, is_offer, root_menu
 from ..notes_capture import draft_of
 from ..registry import by_id
 from ..worker import MAX_QUEUED_JOBS_PER_USER, Job, JobQueue
@@ -26,6 +26,7 @@ log = get_logger(__name__)
 router = Router(name="documents")
 
 EXPIRED = "This job has expired — send the document again."
+OFFER_EXPIRED = "This offer has expired."
 UNAVAILABLE = "That action is unavailable for this document."
 
 
@@ -84,7 +85,7 @@ async def link_handler(message: Message, path: routing.Path, cards: CardBook) ->
 
 @router.callback_query(JobCB.filter(F.action == "run"))
 async def run_job_handler(
-    callback: CallbackQuery, callback_data: JobCB, queue: JobQueue, cards: CardBook
+    callback: CallbackQuery, callback_data: JobCB, queue: JobQueue, cards: CardBook, bot: Bot
 ) -> None:
     message = editable(callback)
     workflow_id = callback_data.workflow
@@ -94,10 +95,17 @@ async def run_job_handler(
         return
 
     user = callback.from_user
-    async with cards.run_attempt(message.chat.id, message.message_id, user.id) as attempt:
+    async with cards.run_attempt(message.chat.id, message.message_id, user.id, bot) as attempt:
         item = attempt.pending
         if item is None:
-            await callback.answer(EXPIRED, show_alert=True)
+            # a second tap on a Run already queued: the message is the job's status
+            if attempt.is_job:
+                await callback.answer()
+            elif is_offer(message):  # an expired voice offer says so and goes (ADR-024)
+                await delete_message(bot, message.chat.id, message.message_id)
+                await callback.answer(OFFER_EXPIRED, show_alert=True)
+            else:
+                await callback.answer(EXPIRED, show_alert=True)
             return
         offered = item.estimates.get(workflow_id)
         if offered is None or offered.error:
@@ -112,7 +120,7 @@ async def run_job_handler(
             return
 
         stored = await asyncio.to_thread(db.get_user_settings, user.id)
-        config = entry.build_config(stored)
+        config = config_for(item, entry, stored)  # a voice offer stays untranslated
         preview = item.previews[workflow_id]
         # Re-price with the settings in force now: the card's estimate may predate a model change.
         estimate = await asyncio.to_thread(entry.workflow.estimate, settings, config, preview)
@@ -173,4 +181,13 @@ async def cancel_pending_handler(callback: CallbackQuery, cards: CardBook) -> No
     if message is not None:
         cards.cancel(message.chat.id, message.message_id)
         await message.edit_text("✖️ Cancelled")
+    await callback.answer()
+
+
+@router.callback_query(JobCB.filter(F.action == "dismiss"))
+async def dismiss_offer_handler(callback: CallbackQuery, cards: CardBook, bot: Bot) -> None:
+    """✖️ on a voice offer deletes it, unless a Run made it a job (ADR-024)."""
+    message = editable(callback)
+    if message is not None:
+        await cards.dismiss_offer(bot, message.chat.id, message.message_id, callback.from_user.id)
     await callback.answer()

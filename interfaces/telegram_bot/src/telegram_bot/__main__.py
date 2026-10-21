@@ -15,7 +15,7 @@ from shared.obs import get_logger
 
 from . import db
 from .access import AccessMiddleware
-from .cards import CardBook, LiveIntake
+from .cards import CardBook, DropOfferMiddleware, LiveIntake
 from .diary_runtime import build_runtime as build_diary_runtime
 from .handlers import setup_routers
 from .notes_runtime import build_runtime as build_notes_runtime
@@ -84,6 +84,7 @@ async def _run() -> None:
     else:
         log.warning("diary nudge disabled: notes did not start, so the Owner's Zone is unknown")
     dp.update.outer_middleware(AccessMiddleware())
+    dp.message.outer_middleware(DropOfferMiddleware())  # after access: strangers never reach it
     setup_routers(dp)
 
     # Held so the loop task is not garbage collected mid-flight.

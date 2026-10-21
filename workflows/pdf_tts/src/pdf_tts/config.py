@@ -5,7 +5,30 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from shared.audio import SpeechSpec
+from shared.pricing import DEFAULT_TRANSLATE_MODEL, translate_prices
 from shared.translate import TranslateSpec
+
+
+class NarrationSpec(BaseModel):
+    """How code, diagrams, charts, tables and pictures are retold before synthesis (ADR-023)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model: str = DEFAULT_TRANSLATE_MODEL
+    max_parallel: int = 6
+    # Backstop on the number of chat calls one document can cause.
+    max_figures: int = 300
+    input_price_per_1m: float = 0.0
+    output_price_per_1m: float = 0.0
+
+    @model_validator(mode="after")
+    def _prices_follow_model(self) -> NarrationSpec:
+        default_in, default_out = translate_prices(self.model)
+        if "input_price_per_1m" not in self.model_fields_set:
+            self.input_price_per_1m = default_in
+        if "output_price_per_1m" not in self.model_fields_set:
+            self.output_price_per_1m = default_out
+        return self
 
 
 class PdfTtsConfig(BaseModel):
@@ -15,6 +38,7 @@ class PdfTtsConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     speech: SpeechSpec = Field(default_factory=SpeechSpec)
+    narration: NarrationSpec = Field(default_factory=NarrationSpec)
     translation: TranslateSpec | None = None
     chapter_char_target: int = 8000
     # Backstop against a single document turning into a three-figure bill; the

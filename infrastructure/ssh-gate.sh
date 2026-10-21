@@ -16,9 +16,25 @@ FIREWALL_ID="$("${TF[@]}" output -raw firewall_id </dev/null)"
 IP="$("${TF[@]}" output -raw droplet_ipv4 </dev/null)"
 
 # The token goes in through a file descriptor so it never shows in the process list.
+# An HTTP error ends in one plain ERROR line: backup.py alerts with the last stderr line.
 api() {
-  curl -fsS -X "$1" -H @<(printf 'Authorization: Bearer %s' "$TOKEN") \
-    -H 'Content-Type: application/json' ${3:+-d "$3"} "$API$2" </dev/null
+  local out code
+  out="$(curl -sS -X "$1" -H @<(printf 'Authorization: Bearer %s' "$TOKEN") \
+    -H 'Content-Type: application/json' ${3:+-d "$3"} -w '\n%{http_code}' "$API$2" </dev/null)" \
+    || { echo "ERROR: DigitalOcean API $1 $2 did not answer" >&2; return 1; }
+  code="${out##*$'\n'}"
+  out="${out%$'\n'*}"
+  case "$code" in
+    2??) printf '%s' "$out" ;;
+    401)
+      echo "ERROR: DigitalOcean rejected DO_API_KEY (HTTP 401): the token expired or was revoked; put a new one in .env" >&2
+      return 1
+      ;;
+    *)
+      echo "ERROR: DigitalOcean API $1 $2 answered HTTP $code: ${out:0:200}" >&2
+      return 1
+      ;;
+  esac
 }
 
 my_ip() {
@@ -32,7 +48,9 @@ my_ip() {
 
 # Every tcp/22 inbound rule on the firewall as one request body; empty when closed.
 ssh_rules() {
-  api GET "/firewalls/$FIREWALL_ID" | python3 -c '
+  local firewall
+  firewall="$(api GET "/firewalls/$FIREWALL_ID")" || return 1
+  printf '%s' "$firewall" | python3 -c '
 import json, sys
 rules = [r for r in json.load(sys.stdin)["firewall"]["inbound_rules"] if r["protocol"] == "tcp" and r["ports"] == "22"]
 if rules: print(json.dumps({"inbound_rules": rules}))'

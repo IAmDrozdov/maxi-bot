@@ -66,7 +66,7 @@ Putting a BotResult aside with the button under the bot's own message is a Captu
 _Avoid_: save, ingest, submit, forward
 
 **Acknowledgement**:
-The bot's single reaction on the Owner's Capture message, saying whether to wait, nothing to do, or take a look; the bot leaves no message of its own, except the Due line a Notice asks for.
+The bot's single reaction on the Owner's Capture message, saying whether to wait, nothing to do, or take a look; the bot leaves no message of its own, except the Due line a Notice asks for and, for a long text, the transient voice offer (ADR-024).
 Three states: *wait* (✍, Enrichment running), *saved* (in notes, a duplicate included: shown as the emoji of the Item's first Section, 👌 if none), *look* (👎: Capture failed, or Enrichment ended failed). In code `notes.capture.Acknowledgement`; the emoji are the bot's rendering (`notes_ui.reaction_of`).
 A BotResult's Acknowledgement goes on the bot's own message, and the button that Captured it goes away.
 _Avoid_: confirmation, receipt, card, reply, ack (in prose)

@@ -15,6 +15,7 @@ PHASE_LABELS = {
     "extracting": "📖 Extracting",
     "fetching": "📡 Fetching video",
     "transcribing": "🎧 Transcribing",
+    "describing figures": "🖼 Describing figures",
     "translating": "🌐 Translating",
     "synthesizing": "🎙 Synthesizing",
 }

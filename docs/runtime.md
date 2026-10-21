@@ -25,13 +25,21 @@ for the operator's address only while `infrastructure/ssh-gate.sh` runs a comman
 
 | id | Accepts | Delivers | Paid calls |
 |---|---|---|---|
-| `doc_translator` | Document | Translated Markdown, one chapter at a time | chat |
-| `pdf_tts` | Document | Voice message(s), optionally translated first | chat + TTS |
+| `doc_translator` | Document (.pdf .docx .md .markdown .txt .html .htm) | Translated Markdown, one chapter at a time; fenced code and URLs stay as they are | chat |
+| `pdf_tts` | Document (same) | Voice message(s), optionally translated first; code, diagrams, charts, tables and pictures are retold, not read | chat (+ vision) + TTS |
 | `yt_dub` | Link (YouTube only) | Dubbed voice-over; captions first, STT fallback | chat + TTS (+ STT) |
 
 A non-YouTube link is scraped into a Markdown `DocumentSource` (`telegram_bot/scrape.py`) and
-then offered to the document agents. Plain text reaches them only as a `.txt` file. Every agent is
-`preview` (free) → `estimate` (free) → `run` (paid).
+then offered to the document agents. A GitHub file link (`github.com/<owner>/<repo>/blob|raw/<ref>/<path>`,
+or `raw.githubusercontent.com`) is fetched as the raw file instead of GitHub's page: `.html` is converted,
+`.md`, `.markdown` and `.txt` are read (a `.txt` payload is named `.txt`, so it stays plain text),
+anything else is refused with «send it as a document». A page with a `text/x-mermaid` script, or
+`text/plain` scripts that carry `data-lang`/`data-title`, goes through the same HTML converter; every
+other page goes through `trafilatura` (with pictures). An `.html`/`.htm` upload is a document like the others.
+`shared.doc.html` turns HTML into Markdown with code, Mermaid, charts, inline SVG and `![alt](url)` kept as
+fences and image links; `pdf_tts` then retells each of those figures with one chat call before the voice
+(ADR-023). Plain text reaches the agents only as a `.txt` file, and its speech loses nothing but bare URLs.
+Every agent is `preview` (free) → `estimate` (free) → `run` (paid).
 
 ## Who gets what (the Path)
 
@@ -44,23 +52,23 @@ router order is not part of the rule. One row per `Kind`:
 
 | Kind | Message | Taken by |
 |---|---|---|
-| `document_card` | an agent document (.pdf .docx .md .markdown .txt) → card, never 💾 | `documents.document_handler` |
+| `document_card` | an agent document (.pdf .docx .md .markdown .txt .html .htm) → card, never 💾 | `documents.document_handler` |
 | `link_card` | text with exactly one website URL → a *savable* card (with 💾); a command that carries a URL → a card without 💾 | `documents.link_handler` |
-| `capture_text` | text with no URL, several, or exactly one Instagram / YouTube / TikTok URL → a Note or a Link, no card | `notes.direct_text_handler` |
+| `capture_text` | text with no URL, several, or exactly one Instagram / YouTube / TikTok URL → a Note or a Link, no card. A text of at least `BOT_POST_VOICE_MIN_WORDS` (200) words, URLs not counted, is `capture_text` with `voice_offer` whatever links it holds (checked before the link rules): saved the same way, then answered with a voice offer (ADR-024). Only a message's text counts, not a caption | `notes.direct_text_handler` |
 | `capture_file` | a photo, video or non-agent document → a File | `notes.file_handler` |
 | `capture_voice` | a voice or round video → a Voice, transcribed in Enrichment | `notes.voice_handler` |
 | `ignore` | everything else: a command, a sticker, audio… | nothing |
 
 Other routers: `start` (`/start` and `/help`, one help text; a bare `/dub`, one hint), `settings_menu` and `status`
 (`/settings`, `/status`, `/cancel`).
-`notes` also takes the callbacks `JobCB save`, `ResultCB` (💾 under a delivered result, below) and
+`documents` also takes `JobCB dismiss` (✖️ on a voice offer). `notes` also takes the callbacks `JobCB save`, `ResultCB` (💾 under a delivered result, below) and
 `NotesCB offer` / `restore` / `done` (a Reminder's ✅ Готово marks the Item done and edits the
 message to «✅ сделано»). Router order still matters
 for commands that carry text (`/settings https://x`, `/help https://x`) and for
 `MenuCB(page='job')`, which `documents` claims.
 
 Callback-data prefixes (`keyboards.py`, `notes_ui.py`, max 64 bytes): `m` menu, `o` option
-picker, `s` set value, `t` try voice/model, `j` job actions (`run`/`settings`/`cancel`/`save`),
+picker, `s` set value, `t` try voice/model, `j` job actions (`run`/`settings`/`cancel`/`save`/`dismiss`),
 `n` notes item actions (`offer`/`restore`/`done`), `r` a delivered result (the job log's row id).
 Pick a new letter for a new family.
 
@@ -90,6 +98,29 @@ offline harness.
 Guards: only a card that owns the chat's pending job can be run, re-priced or sent to
 Settings. A card closed while it was still pricing is never overwritten. A card *superseded* by a
 newer message is edited to "⏭ Replaced…" if it was still pricing, and keeps 💾.
+
+**The voice offer** (ADR-024) is a card of its own kind, `CardBook.offer_voice`. A long text is saved
+first, exactly as any text (reaction, Due line), and the bot then *replies* to it with
+`🔊 Voice this post? · N words` and `[🔊 Audio · $ · ETA] [✖️]`: the one priced `pdf_tts` action, no ⚙️, no 💾.
+The text is a `.txt` `DocumentSource`; its config is built from the Owner's settings with `tts.translate`
+forced off (`cards.config_for`, also used at Run's re-pricing), so it is never translated. The offer is
+sent only once priced (a `.txt` is priced offline; if pricing fails nothing is sent). It has its own
+per-chat slot (`CardBook._offers`, looked up by chat id and message id), apart from the pending job and
+the live card status, so a long text never takes a link or document card's job or status. It goes away
+four ways, none of which leaves a "Cancelled" line:
+- ✖️ (`JobCB dismiss`) deletes the message; it takes the same per-user run lock as Run, so a message
+  Run has just made a job is only answered, never deleted;
+- the Owner's next message of any kind (`DropOfferMiddleware`, an outer message middleware registered
+  after `AccessMiddleware`) deletes a live offer that has not become a job, and so does a card opened for a
+  newer message than the offer's own, or from a button (`offer_link(from_button=True)`); a card for an
+  older message in a burst leaves a newer text's offer alone; a new offer deletes the previous one, so two long texts in a row leave one;
+- an offer is not sent when a newer message arrived while it was priced (the middleware records the newest
+  Owner message per chat, `CardBook.saw`; staleness keys on a bot status id only for a card opened from a button), and one overtaken during the send is deleted again; a Run rejected
+  after a newer message (spend block, queue full) deletes the offer instead of putting it back;
+- a Run tap on an offer the book no longer holds (30 min TTL, a restart) answers "This offer has
+  expired." and deletes it; ✖️ on one just deletes it; the offer is recognised by its own ✖️ button (`keyboards.is_offer`).
+Run turns the offer message into the job status as for any card and it is never deleted from then on;
+the voice result carries 💾 under it as usual. With notes down the text gets 👎 and the offer anyway.
 
 Spend gate (`_spend_block_reason`): the per-job cap (`BOT_MAX_JOB_COST_USD`), checked at Run on the
 re-priced estimate. There is no daily cap (ADR-022).
@@ -288,8 +319,9 @@ A re-enrich sets the reaction again, to the Section the new Enrichment chose.
 ## State that lives only in memory
 
 These are lost on every restart, and a deploy is a restart:
-- The card book (`dp["cards"]`): pending cards (TTL 30 min, 60 MB cap), savables (the Owner's
-  Drafts), and the live/closed marks.
+- The card book (`dp["cards"]`): pending cards and voice offers (TTL 30 min, 60 MB cap together),
+  savables (the Owner's Drafts), and the live/closed marks. A restart leaves an offer in the chat until
+  it is tapped (Run then answers "expired" and deletes it; ✖️ just deletes it).
 - The job queue.
 
 After a restart, old card buttons answer "expired", and a job left running is marked `interrupted`
@@ -305,7 +337,8 @@ up anything left `pending` from sqlite.
   - `.env.example`;
   - the allow-list regex in `infrastructure/deploy.sh` (only `OPENAI_API_KEY`,
     `TELEGRAM_BOT_TOKEN`, `OWNER_TELEGRAM_ID`, `LOG_LEVEL`, `YTDLP_PROXY`, `BOT_*` and `NOTES_*`
-    reach the droplet as `bot.env`). Two files go up separately: `miniapp.env`
+    reach the droplet as `bot.env`, so a new `BOT_*` variable such as `BOT_POST_VOICE_MIN_WORDS`
+    needs no change here). Two files go up separately: `miniapp.env`
     (`OWNER_TELEGRAM_ID`, `LOG_LEVEL` and the derived `MINIAPP_INIT_SECRET`) and `funnel.env`
     (`TS_AUTHKEY`). A variable the Mini App needs goes into the first;
   - the README tables.

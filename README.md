@@ -24,7 +24,7 @@ Send the bot a document or a website link and it shows what each agent would cos
 
 ### A price before every run
 
-Send a `.pdf`, `.docx`, `.md`, `.markdown` or `.txt` file (up to 20 MB) or a single website link. The bot answers with a card: size, characters, chapters, and one button per agent with its price and time estimate (`📄 Translate · $<price> · ~<time>`), plus `⚙️ Settings` and `✖️ Cancel`. One tap runs it, with no confirm step. The card shows live progress, then the result arrives as a Markdown file or a voice message with its real cost in the caption. `💾 В заметки` under a result files it in the built-in Section «От бота».
+Send a `.pdf`, `.docx`, `.md`, `.markdown`, `.txt`, `.html` or `.htm` file (up to 20 MB) or a single website link. The bot answers with a card: size, characters, chapters, and one button per agent with its price and time estimate (`📄 Translate · $<price> · ~<time>`), plus `⚙️ Settings` and `✖️ Cancel`. One tap runs it, with no confirm step. The card shows live progress, then the result arrives as a Markdown file or a voice message with its real cost in the caption. `💾 В заметки` under a result files it in the built-in Section «От бота».
 
 <table>
 <tr>
@@ -69,7 +69,7 @@ A failed job answers one question first: wait, or go fix something? Before it bl
 
 ### Send anything, it lands in notes
 
-Everything that is not a priced document or a single website link is saved at once. The bot's reply is a reaction on your message: ✍ working, then the icon of the section it was filed in, 👎 take a look. A reminder also gets one text reply, with its Due (see Reminders). That covers text, several links, social links, photos, videos, files, voice messages and round videos; a forwarded message keeps its sender. A website link gets the priced card, with `💾 В заметки` on top.
+Everything that is not a priced document or a single website link is saved at once. The bot's reply is a reaction on your message: ✍ working, then the icon of the section it was filed in, 👎 take a look. A reminder also gets one text reply, with its Due (see Reminders). That covers text, several links, social links, photos, videos, files, voice messages and round videos; a forwarded message keeps its sender. A website link gets the priced card, with `💾 В заметки` on top. A text of `BOT_POST_VOICE_MIN_WORDS` (200) or more words is saved the same way and also offered a voice-over.
 
 <img src="docs/images/readme/chat-capture-reminder.png" alt="A note sent to the bot: your message with a reaction, and the bot's reply with the reminder's Due «⏰ ср, 14 окт, 10:00» and a «📅 Перенести» button" width="520">
 
@@ -210,6 +210,7 @@ Everything an operator changes lives in `.env` (`.env.example` is the commented 
 | `TELEGRAM_BOT_TOKEN` | none | required for the bot |
 | `OWNER_TELEGRAM_ID` | none | required for the bot: the numeric id of the one account it answers |
 | `BOT_MAX_JOB_COST_USD` | 10 | refuse a single job estimated above this |
+| `BOT_POST_VOICE_MIN_WORDS` | 200 | a text of at least this many words (URLs not counted) is saved and then offered a voice-over; 0 turns the offer off |
 | `BOT_MINIAPP_URL` | empty | public HTTPS URL of the Mini App; empty means no 📒 button, no «📅 Перенести» on reminders and no «✍️ Записать» on the diary Nudge |
 | `NOTES_CLASSIFIER_PROVIDER` | `fake` in code, `openai` in `.env.example` | who files Items and writes the summary; `fake` is offline and files everything to «Остальное» |
 

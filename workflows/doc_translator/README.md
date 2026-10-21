@@ -1,6 +1,6 @@
 # doc_translator
 
-Translates long PDF, DOCX or Markdown documents chapter-by-chapter via the shared translation stage, then merges the result into one Markdown file. Exposed as `doc_translator.WORKFLOW` (ADR-012).
+Translates long PDF, DOCX, HTML or Markdown documents chapter-by-chapter via the shared translation stage, then merges the result into one Markdown file. Exposed as `doc_translator.WORKFLOW` (ADR-012).
 
 ## Pipeline
 
@@ -15,8 +15,12 @@ Framework: LangChain — linear chain, no cycles (ADR-003 compliant).
 | Field | Default | Description |
 |---|---|---|
 | `translation` | `TranslateSpec()` | `source_language`, `target_language`, `model` (`gpt-5.6-luna`), `max_parallel`, prices (follow the model via `shared.pricing`) |
-| `chapter_char_target` | `8000` | Size-based fallback chapter target |
+| `chapter_char_target` | `8000` | Chapter size target: small Markdown sections are packed up to it, size-based fallback cut |
 | `max_document_chars` | `2,000,000` | Backstop against a huge document |
+
+HTML (`.html`, `.htm`) reaches the translator as Markdown (`shared.doc.html`, ADR-023): code, Mermaid, charts
+and SVG labels become fences and pictures become `![alt](url)`. The translation prompt leaves fenced
+blocks and URLs untranslated, so the result keeps them as they were.
 
 DOCX known limits: body paragraphs only (tables, headers/footers, footnotes and
 text boxes are skipped); non-English heading style names fall back to size-based

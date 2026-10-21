@@ -15,7 +15,7 @@ router = Router(name="start")
 HELP_TEXT = (
     "🤖 <b>Maxi bot</b>\n\n"
     "Send me a document (<code>.pdf</code>, <code>.docx</code>, <code>.md</code>, "
-    "<code>.txt</code>, up to 20 MB) <b>or paste a link</b> (e.g. a blog "
+    "<code>.txt</code>, <code>.html</code>, up to 20 MB) <b>or paste a link</b> (e.g. a blog "
     "article — I extract the readable text) and pick an agent:\n"
     "• 📄 <b>Document Translator</b> — chapter-by-chapter translation to Markdown\n"
     "• 🔊 <b>Document → Audio</b> — text-to-speech, optionally translated first\n"

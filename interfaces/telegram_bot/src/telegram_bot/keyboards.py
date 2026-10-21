@@ -52,7 +52,7 @@ class TryCB(CallbackData, prefix="t"):
 
 
 class JobCB(CallbackData, prefix="j"):
-    """Pending-job actions: action is 'run', 'settings', 'cancel', 'save' (to notes)."""
+    """Pending-job actions: action is 'run', 'settings', 'cancel', 'save' (to notes), 'dismiss' (a voice offer)."""
 
     action: str
     workflow: str = ""
@@ -166,17 +166,38 @@ def save_only_menu() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def option_text(opt: ActionOption) -> str:
+    return " · ".join(part for part in (opt.label, opt.cost_label, opt.eta_label) if part)
+
+
+def offer_menu(option: ActionOption) -> InlineKeyboardMarkup:
+    """A voice offer: the one priced agent and ✖️ (which deletes the offer), in a row."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=option_text(option), callback_data=JobCB(action="run", workflow=option.workflow_id)
+    )
+    builder.button(text="✖️", callback_data=JobCB(action="dismiss"))
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def is_offer(message: Message) -> bool:
+    """True for a voice offer, read off its own ✖️ button, so it holds after a restart."""
+    markup = message.reply_markup
+    dismiss = JobCB(action="dismiss").pack()
+    return markup is not None and any(
+        button.callback_data == dismiss for row in markup.inline_keyboard for button in row
+    )
+
+
 def action_menu(options: list[ActionOption], *, savable: bool = False) -> InlineKeyboardMarkup:
     """Save (a savable card) first, then one button per priced agent; tap runs. Settings + Cancel last."""
     builder = InlineKeyboardBuilder()
     if savable:
         builder.button(text=SAVE_LABEL, callback_data=JobCB(action="save"))
     for opt in options:
-        parts = [opt.label, opt.cost_label]
-        if opt.eta_label:
-            parts.append(opt.eta_label)
         builder.button(
-            text=" · ".join(parts),
+            text=option_text(opt),
             callback_data=JobCB(action="run", workflow=opt.workflow_id),
         )
     builder.button(text="⚙️ Settings", callback_data=JobCB(action="settings"))

@@ -11,14 +11,15 @@ from aiogram.types import Message
 
 from notes.domain.urls import extract_urls
 from notes.enrich.providers import is_social_media, is_youtube
+from shared.config import settings
 
 from .catalog import ALLOWED_EXTENSIONS
 
 Media = Literal["none", "document", "photo_or_video", "voice", "other"]
 Kind = Literal[
-    "document_card",  # an agent document (.pdf .docx .md .markdown .txt): card, never 💾
+    "document_card",  # an agent document (.pdf .docx .md .markdown .txt .html .htm): card, never 💾
     "link_card",  # a link to price: card (a single website link: with 💾)
-    "capture_text",  # text with no URL, several, or one Instagram/YouTube/TikTok URL
+    "capture_text",  # text with no URL, several, or one social URL; or a long post (voice offer)
     "capture_file",  # a photo, video or non-agent document
     "capture_voice",  # a voice or round video
     "ignore",  # everything else: a command, an audio, a sticker…
@@ -40,6 +41,8 @@ class Path:
     kind: Kind
     url: str | None = None  # link_card only: the link the card prices
     savable: bool = False  # link_card only: the card offers 💾 (ADR-015 §4, notes ADR-0009)
+    # capture_text only: a long text, saved and then offered a voice-over (ADR-024)
+    voice_offer: bool = False
 
 
 IGNORE = Path("ignore")
@@ -52,6 +55,12 @@ def is_agent_document(filename: str) -> bool:
 def _is_direct_host(url: str) -> bool:
     """Instagram, YouTube and TikTok links are saved as they are: there is no article to scrape."""
     return is_youtube(url) or is_social_media(url)
+
+
+def is_long_text(words: str) -> bool:
+    """True at BOT_POST_VOICE_MIN_WORDS or more whitespace-separated words; 0 turns the offer off."""
+    threshold = settings.bot_post_voice_min_words
+    return threshold > 0 and len(words.split()) >= threshold
 
 
 def incoming_of(message: Message) -> Incoming:
@@ -82,7 +91,7 @@ def incoming_of(message: Message) -> Incoming:
 
 
 def route(m: Incoming) -> Path:
-    """Total and pure: every Incoming gets exactly one Path."""
+    """Total; reads only the voice-offer threshold from settings. Every Incoming gets one Path."""
     if m.media == "other":
         return IGNORE
     if m.media == "voice":
@@ -94,7 +103,10 @@ def route(m: Incoming) -> Path:
             return Path("document_card")  # never 💾
         return Path("capture_file")
     if m.text and not m.text.startswith("/"):
-        urls = extract_urls(m.text, linked=m.linked).urls
+        found = extract_urls(m.text, linked=m.linked)
+        if is_long_text(found.annotation):  # before the link rules: a post's hidden link is no card
+            return Path("capture_text", voice_offer=True)
+        urls = found.urls
         if len(urls) == 1 and not _is_direct_host(urls[0]):
             return Path("link_card", url=urls[0], savable=True)
         return Path("capture_text")

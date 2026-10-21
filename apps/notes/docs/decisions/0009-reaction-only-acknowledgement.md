@@ -4,6 +4,7 @@ _Amended by ADR-0010 (2026-10-07): there is no Archive or Trash; a re-sent Link 
 _Amended by ADR-0011: the bot leaves a message for a Reminder — the Due line and the reminder itself._
 _Amended by ADR-0013: a BotResult's Acknowledgement goes on the bot's own result message, and a result message carries a 💾 button._
 _Amended 2026-10-18: *saved* is shown as the emoji of the Item's first Section, so a Section's emoji must be a reaction the Bot API allows (below)._
+_Amended by ADR-024 (2026-10-21): a long text is also answered with a voice offer, a bot message that goes away; the Acknowledgement itself is still the reaction._
 
 The chat should hold the Owner's messages and the agents' outputs, nothing else. So the bot no
 longer answers a Capture with a message. It sets one reaction on the Owner's own message and

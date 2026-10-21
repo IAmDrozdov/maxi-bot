@@ -52,6 +52,10 @@ product vocabulary.
   live, which card the chat's one pending job belongs to, and what 💾 would save for it
   (`telegram_bot/cards.py`). Lost on restart, which is why old buttons answer "expired".
   Avoid: pending dict, drafts, card state.
+- **Voice offer** — the bot's reply to a saved long text (at least `BOT_POST_VOICE_MIN_WORDS`
+  words): one priced voice-over button and ✖️. The text is already in notes, so the offer only
+  adds the voice; ✖️, the Owner's next message or a new card deletes it, and Run turns it into the job status
+  (ADR-024). It has its own slot in the card book, so it never replaces a card. Avoid: post card, prompt.
 - **Savable** — the opaque attachment the Owner's card carries for 💾; for notes it is a
   Draft. The card never looks inside it. Avoid: draft (when speaking of the card).
 - **Smoke runner** — `interfaces/smoke`, the terminal adapter over the same contract

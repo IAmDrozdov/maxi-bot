@@ -1,24 +1,28 @@
-"""Parse PDF, DOCX or plain/markdown bytes into text and chapters."""
+"""Parse PDF, DOCX, HTML or plain/markdown bytes into text and chapters."""
 
 from __future__ import annotations
 
 import hashlib
 import io
+import re
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
 from shared.doc.chapters import split_into_chapters
+from shared.doc.html import html_to_markdown
 from shared.obs import get_logger
 
 log = get_logger(__name__)
 
 _TEXT_EXTENSIONS = {".md", ".markdown", ".txt"}
+_HTML_EXTENSIONS = {".html", ".htm"}
 _DOCX_EXTENSIONS = {".docx"}
 _DOCX_HEADING_STYLES = ("Heading 1", "Heading 2")
 _EMPTY_TEXT_ERRORS = {
     "markdown": "document produced no extractable text",
+    "html": "HTML produced no readable text",
     "docx": "DOCX produced no extractable text",
     "pdf": "PDF produced no extractable text",
 }
@@ -39,12 +43,34 @@ class ParsedDocument:
         return len(self.text)
 
 
-_memo: OrderedDict[tuple[str, int, int], ParsedDocument] = OrderedDict()
+_memo: OrderedDict[tuple[str, str, int, int], ParsedDocument] = OrderedDict()
 _memo_lock = threading.Lock()
 
 
 def _is_text_filename(filename: str) -> bool:
     return PurePosixPath(filename.lower()).suffix in _TEXT_EXTENSIONS
+
+
+def _is_html_filename(filename: str) -> bool:
+    return PurePosixPath(filename.lower()).suffix in _HTML_EXTENSIONS
+
+
+_CHARSET_RE = re.compile(rb"""charset\s*=\s*["']?\s*([\w.:-]+)""", re.IGNORECASE)
+
+
+def decode_html(file_bytes: bytes) -> str:
+    """Decode by BOM, then the page's own meta charset, else UTF-8; undecodable bytes are replaced."""
+    if file_bytes.startswith(b"\xef\xbb\xbf"):
+        return file_bytes[3:].decode("utf-8", errors="replace")
+    declared = _CHARSET_RE.search(file_bytes[:4096])
+    for encoding in (declared.group(1).decode("ascii", "ignore") if declared else "", "utf-8"):
+        if not encoding:
+            continue
+        try:
+            return file_bytes.decode(encoding, errors="replace")
+        except LookupError:
+            continue
+    return file_bytes.decode("utf-8", errors="replace")
 
 
 def _is_docx_filename(filename: str) -> bool:
@@ -127,6 +153,10 @@ def _parse(file_bytes: bytes, filename: str, chapter_char_target: int) -> tuple[
         kind = "markdown"
         text = file_bytes.decode("utf-8", errors="replace").strip()
         chapters = split_into_chapters(text, chapter_char_target) if text else []
+    elif _is_html_filename(filename):
+        kind = "html"
+        text = html_to_markdown(decode_html(file_bytes))
+        chapters = split_into_chapters(text, chapter_char_target, markdown=True) if text else []
     elif _is_docx_filename(filename):
         kind = "docx"
         text, chapters = _extract_docx_chapters(file_bytes, chapter_char_target)
@@ -151,7 +181,8 @@ def parse_document(
     """Text + chapters for a document; repeated calls with the same bytes and knobs are free."""
     if not file_bytes:
         raise DocumentError("the file is empty")
-    key = (hashlib.sha256(file_bytes).hexdigest(), chapter_char_target, max_document_chars)
+    suffix = PurePosixPath(filename.lower()).suffix
+    key = (hashlib.sha256(file_bytes).hexdigest(), suffix, chapter_char_target, max_document_chars)
     with _memo_lock:
         cached = _memo.get(key)
         if cached is not None:

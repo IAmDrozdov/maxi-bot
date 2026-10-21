@@ -29,19 +29,21 @@ router = Router(name="notes")
 async def direct_text_handler(
     message: Message, bot: Bot, notes: NotesRuntime | None, path: routing.Path, cards: CardBook
 ) -> None:
-    """Text and social links go straight to notes as one Link or Note (ADR-0007, ADR-0009)."""
+    """Text and social links go straight to notes as one Link or Note (ADR-0007, ADR-0009); a long text also gets a voice offer."""
     user = message.from_user
     if user is None:
         return
     if notes is None:  # notes are down: a social link still gets the agents' card
         draft = draft_of(message)
         urls = links_of(draft)
-        if len(urls) == 1:
+        if len(urls) == 1 and not path.voice_offer:
             await cards.offer_link(message, urls[0], user.id, draft)
         else:
             await notes_ui.react(bot, message.chat.id, message.message_id, notes_ui.EMOJI["look"])
-        return
-    await notes_capture.capture_message(notes, bot, message)
+    else:
+        await notes_capture.capture_message(notes, bot, message)
+    if path.voice_offer:  # a long text: saved as any text, then the voice-over is offered (ADR-024)
+        await cards.offer_voice(message, routing.incoming_of(message).text, user.id)
 
 
 @router.message(routing.takes("capture_file"))
@@ -154,7 +156,7 @@ async def offer_handler(
     await callback.answer()
     if message is None or item is None or item.url is None:
         return
-    await cards.offer_link(message, item.url, callback.from_user.id)
+    await cards.offer_link(message, item.url, callback.from_user.id, from_button=True)
 
 
 @router.callback_query(NotesCB.filter(F.action == "done"))

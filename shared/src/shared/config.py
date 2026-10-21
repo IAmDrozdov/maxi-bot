@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     bot_default_source_language: str = "English"
     bot_default_target_language: str = "Russian"
     bot_max_job_cost_usd: float = 10.0
+    # A text of at least this many words (URLs excluded) gets a voice offer (ADR-024); 0 = off.
+    bot_post_voice_min_words: int = 200
 
     # Notes (apps/notes, ADR-015): the Owner's save-for-later store.
     notes_db_path: str = "data/notes.sqlite3"

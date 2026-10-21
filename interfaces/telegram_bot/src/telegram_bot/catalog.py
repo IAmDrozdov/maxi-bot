@@ -87,7 +87,7 @@ SECTION_KEYS: dict[str, list[str]] = {
     ],
 }
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".md", ".markdown", ".txt"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".md", ".markdown", ".txt", ".html", ".htm"}
 TG_DOWNLOAD_LIMIT = 20 * 1024 * 1024  # Bot API getFile cap
 TG_UPLOAD_LIMIT = 50 * 1024 * 1024  # Bot API send cap
 

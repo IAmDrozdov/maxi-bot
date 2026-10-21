@@ -35,7 +35,7 @@ Must match `tools/check_layers.py`:
 
 ## Config split (ADR-004)
 
-- `shared.config.Settings` = env-driven infra config, plus the bot's per-deployment operator policy (`BOT_*`: spend caps, default and offered languages).
+- `shared.config.Settings` = env-driven infra config, plus the bot's per-deployment operator policy (`BOT_*`: spend caps, default and offered languages, the voice-offer threshold).
 - `<Name>Config` = workflow behavior knobs with code defaults.
 - Nodes do not read env and do not construct `Settings()`.
 - Interfaces may pass config override payloads.
