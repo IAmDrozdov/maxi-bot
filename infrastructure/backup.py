@@ -184,10 +184,10 @@ class Alerts:
         self.token = env.get("TELEGRAM_BOT_TOKEN")
         self.chat_id = env.get("OWNER_TELEGRAM_ID")
 
-    def send(self, reason: str, text: str) -> None:
+    def send(self, reason: str, text: str, *, once_a_day: bool = True) -> None:
         if self.token:
             text = text.replace(self.token, "<token>")
-        if reason in self.state["alerts"]:
+        if once_a_day and reason in self.state["alerts"]:
             log.info("alert held back, already sent within 24 h: %s", text)
             return
         log.warning("alert: %s", text)
@@ -203,8 +203,9 @@ class Alerts:
             except BotApiError as e:
                 log.error("bot message failed, the next run tries again: %s", e)
                 return
-        self.state["alerts"][reason] = now().isoformat(timespec="seconds")
-        save_state(self.source, self.state)
+        if once_a_day:
+            self.state["alerts"][reason] = now().isoformat(timespec="seconds")
+            save_state(self.source, self.state)
 
 
 def banner(text: str) -> None:
@@ -493,6 +494,8 @@ def report_failure(alerts: Alerts, reason: str) -> None:
     if state["failures"] < 2 and last and now() - datetime.fromisoformat(last) <= STALE_AFTER:
         log.info("first failure in a row; the next run alerts if it fails too")
         return
+    state["alerted"] = True  # the next good Backup posts a recovery message
+    save_state(alerts.source, state)
     since = f" (last good Backup {last[:16].replace('T', ' ')})" if last else ""
     alerts.send(f"failed: {reason}", f"⚠️ maxi-bot backup failed: {reason}{since}")
 
@@ -540,7 +543,19 @@ def run(source: str, force: bool) -> int:
                 check_gate_closed()
         state["last_success"] = manifest["created_at"]
         state["failures"] = 0
+        recovered = state.pop("alerted", False)
+        if recovered:
+            # A new outage must alert at once, not be held back by this one's alerts.
+            state["alerts"] = {
+                k: t for k, t in state["alerts"].items() if not k.startswith("failed:")
+            }
         save_state(source, state)
+        if recovered:
+            alerts.send(
+                "recovered",
+                f"✅ maxi-bot backup works again: Backup {today} placed",
+                once_a_day=False,
+            )
         failed = [m for m in manifest["missing"] if m["reason"] != "too_big"]
         too_big = len(manifest["missing"]) - len(failed)
         log.info(

@@ -42,7 +42,8 @@ root-owned `-wal`/`-shm` files that lock the bot's `app` user out.
 8. **Alerts.** A macOS banner plus a message from the bot to `ADMIN_TELEGRAM_ID`. They come for a
    failed run (from the second failure in a row, or at once when the last good Backup is over 48
    hours old) and for a file that could not be fetched (other than `too_big`). The same reason
-   alerts at most once per 24 hours.
+   alerts at most once per 24 hours. After a failure alert, the next good Backup sends a ✅
+   recovery message and re-arms the failure alerts (amended 2026-10-22).
 9. **Restore is a documented manual procedure** (`infrastructure/README.md` "Backups"), rehearsed
    once. Bytes are never put back into the bot.
 

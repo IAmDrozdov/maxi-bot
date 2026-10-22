@@ -203,6 +203,9 @@ uv run python infrastructure/backup.py uninstall
     48 hours old (one failure right after a wake, before the network is up, says nothing);
   - a file that could not be fetched.
 
+  After a failure alert, the next good Backup sends "✅ maxi-bot backup works again", and a new
+  failure alerts again without waiting out the day.
+
   A schedule that stopped running cannot alert about itself: glance at the folder now and then.
 - **Offline check:** `NOTES_DB_PATH=… TELEGRAM_DB_PATH=… MAXI_BOT_BACKUP_DIR=<scratch> uv run python
   infrastructure/backup.py run --source local` runs the whole pipeline on local databases. It sends
