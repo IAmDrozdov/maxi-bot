@@ -17,8 +17,11 @@ bot chat's URL) live in `CLAUDE.local.md`, which is gitignored because this repo
 - One tab per run. Start with a single `list_pages`: it fails fast when the DevTools attach is
   down, where `new_page` hangs for its full timeout; then drive the run with the `claude-in-chrome`
   tools instead (`browser_batch` chains several actions in one call) and say so in the result.
-  Give `list_pages` two minutes at most (it once hung for 30). `claude-in-chrome` clicks do not
-  register inside the Mini App iframe, so without the attach a Mini App case is `BLOCKED`.
+  Give `list_pages` two minutes at most (it once hung for 30). Inside the Mini App iframe
+  `claude-in-chrome` coordinate clicks register (an earlier run saw its clicks ignored): locate the
+  control with a `zoom` of the modal (the row «⋮» → «🗑 Удалить» → the parent's OK worked, 2026-10-21). A file goes
+  in by pasting: append an `<input type=file>` from `javascript_tool`, `file_upload` into it, then
+  dispatch a `paste` `ClipboardEvent` carrying its file on `#editable-message-text` (Send File opens).
   Otherwise open the bot chat once with `new_page`, keep its page id, and reload with
   `evaluate_script(() => location.reload())`: every `list_pages`, `new_page`, `select_page` or
   `close_page` prints all of the owner's open tabs (3.5-4.6k tokens).
@@ -72,5 +75,7 @@ bot chat's URL) live in `CLAUDE.local.md`, which is gitignored because this repo
   (older Items also `tg_ack_message_id`) before the case deletes the Item; a message with no Item
   goes through the web context menu «Удалить» instead. Or derive its id: record the web id of every
   message of the run, take one Capture as the anchor (its web id and its `tg_message_id`), and while
-  the run's web ids are consecutive, Bot API id = web id − the anchor's difference.
+  the run's web ids are consecutive, Bot API id = web id − the anchor's difference. Web ids count
+  the owner's other private chats too, so a message there opens a gap; the bot's own ids in this
+  chat stay consecutive, so count messages from the anchor instead across a gap.
 - Test Items: Mini App → «Заметки · записи» → «🔍» → `🧪` → the row's «⋮» → «🗑 Удалить», then confirm (Search covers both Statuses).
