@@ -160,6 +160,7 @@ def capture_note(
     db: Database,
     text: str,
     *,
+    caption: str | None = None,
     sender: str | None = None,
     chat_id: int | None = None,
     message_id: int | None = None,
@@ -168,9 +169,9 @@ def capture_note(
     """Save a Note; it lands in Other until the Classifier files it (ADR-0006)."""
     with db.session() as conn:
         cur = conn.execute(
-            "INSERT INTO items(kind, text, sender, tg_chat_id, tg_message_id, created_at, updated_at) "
-            "VALUES ('note', ?, ?, ?, ?, ?, ?)",
-            (text, sender, chat_id, message_id, clock.stamp(now), clock.stamp(now)),
+            "INSERT INTO items(kind, text, caption, sender, tg_chat_id, tg_message_id, "
+            "created_at, updated_at) VALUES ('note', ?, ?, ?, ?, ?, ?, ?)",
+            (text, caption, sender, chat_id, message_id, clock.stamp(now), clock.stamp(now)),
         )
         item_id = int(cur.lastrowid or 0)
         file_in_other(conn, item_id)
@@ -186,6 +187,7 @@ def capture_file(
     file_size: int | None,
     annotation: str,
     preview: tuple[bytes, str] | None,
+    caption: str | None = None,
     sender: str | None = None,
     chat_id: int | None = None,
     message_id: int | None = None,
@@ -194,11 +196,12 @@ def capture_file(
     """Save a File (photo, video, other document): Telegram keeps the bytes, we keep a preview."""
     with db.session() as conn:
         cur = conn.execute(
-            "INSERT INTO items(kind, text, file_id, file_name, file_mime, file_size, sender, "
-            "tg_chat_id, tg_message_id, created_at, updated_at) "
-            "VALUES ('file', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO items(kind, text, caption, file_id, file_name, file_mime, file_size, "
+            "sender, tg_chat_id, tg_message_id, created_at, updated_at) "
+            "VALUES ('file', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 annotation,
+                caption,
                 file_id,
                 file_name,
                 file_mime,
@@ -225,6 +228,7 @@ def capture_voice(
     duration_s: int | None,
     annotation: str,
     preview: tuple[bytes, str] | None,
+    caption: str | None = None,
     sender: str | None = None,
     chat_id: int | None = None,
     message_id: int | None = None,
@@ -233,11 +237,12 @@ def capture_voice(
     """Save a Voice (voice or round video message); Enrichment adds the Transcript."""
     with db.session() as conn:
         cur = conn.execute(
-            "INSERT INTO items(kind, text, file_id, file_mime, file_size, duration_s, sender, "
-            "tg_chat_id, tg_message_id, created_at, updated_at) "
-            "VALUES ('voice', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO items(kind, text, caption, file_id, file_mime, file_size, duration_s, "
+            "sender, tg_chat_id, tg_message_id, created_at, updated_at) "
+            "VALUES ('voice', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 annotation,
+                caption,
                 file_id,
                 file_mime,
                 file_size,

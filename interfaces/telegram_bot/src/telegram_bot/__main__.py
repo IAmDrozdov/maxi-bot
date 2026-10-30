@@ -19,6 +19,7 @@ from .cards import CardBook, DropOfferMiddleware, LiveIntake
 from .diary_runtime import build_runtime as build_diary_runtime
 from .handlers import setup_routers
 from .notes_runtime import build_runtime as build_notes_runtime
+from .pairing import Pairing, PairingMiddleware
 from .tracing import init_tracing
 from .worker import JobQueue, worker_loop
 
@@ -83,8 +84,10 @@ async def _run() -> None:
             log.exception("diary nudge disabled: could not open the diary store")
     else:
         log.warning("diary nudge disabled: notes did not start, so the Owner's Zone is unknown")
+    dp["pairing"] = Pairing()
     dp.update.outer_middleware(AccessMiddleware())
-    dp.message.outer_middleware(DropOfferMiddleware())  # after access: strangers never reach it
+    dp.message.outer_middleware(PairingMiddleware())  # after access: strangers never reach it
+    dp.message.outer_middleware(DropOfferMiddleware())
     setup_routers(dp)
 
     # Held so the loop task is not garbage collected mid-flight.

@@ -57,7 +57,7 @@ Who a forwarded Capture came from — a person, a chat or a channel. Never the A
 _Avoid_: author, from, forwarder
 
 **Annotation**:
-The Owner's own words sent alongside a Link.
+The Owner's own words sent alongside a Link, or a short text the Owner sent in the same second just before a share or forward, which then goes with that Capture instead of being one (ADR-025).
 _Avoid_: note, comment, caption
 
 **Capture**:

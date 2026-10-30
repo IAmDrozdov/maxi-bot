@@ -59,12 +59,14 @@ def sender_of(message: Message) -> str | None:
     return None
 
 
-def draft_of(message: Message) -> Draft:
-    """The Owner's words and hidden links (read the way routing reads them), the Sender and the message."""
+def draft_of(message: Message, annotation: str | None = None) -> Draft:
+    """The message's words and hidden links (read the way routing reads them), the Owner's short text
+    sent with it (ADR-025), the Sender and the message."""
     incoming = routing.incoming_of(message)
     return Draft(
         words=incoming.text,
         links=incoming.linked,
+        annotation=annotation or "",
         sender=sender_of(message),
         message_id=message.message_id,
     )
@@ -87,11 +89,12 @@ async def _preview_of(bot: Bot, thumb: Any) -> tuple[bytes, str] | None:
     return (buffer.getvalue(), "image/jpeg") if buffer.getvalue() else None
 
 
-async def payload_of(bot: Bot, message: Message) -> Payload:
+async def payload_of(bot: Bot, message: Message, annotation: str | None = None) -> Payload:
     """Text → Draft; photo/video/document → Attachment with its preview; voice/round video → Attachment(speech=True)."""
     if message.text is not None:
-        return draft_of(message)
+        return draft_of(message, annotation)
     caption = routing.incoming_of(message).text
+    said = annotation or ""
     if message.voice is not None:
         voice = message.voice
         return Attachment(
@@ -99,6 +102,7 @@ async def payload_of(bot: Bot, message: Message) -> Payload:
             mime=voice.mime_type or "audio/ogg",
             size=voice.file_size,
             caption=caption,
+            annotation=said,
             duration_s=voice.duration,
             speech=True,
         )
@@ -109,6 +113,7 @@ async def payload_of(bot: Bot, message: Message) -> Payload:
             mime="video/mp4",  # Telegram gives a video note no mime type; it is always mp4
             size=round_video.file_size,
             caption=caption,
+            annotation=said,
             duration_s=round_video.duration,
             preview=await _preview_of(bot, round_video.thumbnail),
             speech=True,
@@ -121,6 +126,7 @@ async def payload_of(bot: Bot, message: Message) -> Payload:
             mime="image/jpeg",
             size=best.file_size,
             caption=caption,
+            annotation=said,
             preview=await _preview_of(bot, photos[-2] if len(photos) > 1 else best),
         )
     if message.video:
@@ -130,6 +136,7 @@ async def payload_of(bot: Bot, message: Message) -> Payload:
             mime=video.mime_type,
             size=video.file_size,
             caption=caption,
+            annotation=said,
             file_name=video.file_name,
             preview=await _preview_of(bot, video.thumbnail),
         )
@@ -140,6 +147,7 @@ async def payload_of(bot: Bot, message: Message) -> Payload:
         mime=document.mime_type,
         size=document.file_size,
         caption=caption,
+        annotation=said,
         file_name=document.file_name,
         preview=await _preview_of(bot, document.thumbnail),
     )
@@ -176,12 +184,14 @@ def bot_result_of(message: Message, job: tuple[str, str] | None) -> BotResult | 
     )
 
 
-async def capture_message(notes: NotesRuntime, bot: Bot, message: Message) -> None:
+async def capture_message(
+    notes: NotesRuntime, bot: Bot, message: Message, annotation: str | None = None
+) -> None:
     """A direct Capture: ✍ at once, read the message, save, then what the Capture decided; 👎 if saving threw."""
     chat, mid = message.chat.id, message.message_id
     await notes_ui.react(bot, chat, mid, notes_ui.EMOJI["wait"])
     try:
-        payload = await payload_of(bot, message)
+        payload = await payload_of(bot, message, annotation)
         captured = await capture(
             notes.db, payload, Origin(chat, mid, sender_of(message)), classifier=notes.classifier
         )

@@ -28,6 +28,8 @@ log = get_logger(__name__)
 # 7. `now` pins created_at and the "is the Due ahead" check; default the current time.
 # 8. A BotResult is its result message, so the Origin must name it; Captured twice it is "existing". It is
 #    filed in From the bot and its Enrichment is skipped: Acknowledgement saved, enrich False, no Due (ADR-0013).
+# 9. A payload's `annotation`, the Owner's short text sent just before it (ADR-025), comes first in the
+#    Owner's words; on a forwarded Note, File or Voice it is the Owner's words, and the forward's own become its caption.
 
 # What the reaction on the Capture message should say: wait, it is in notes, take a look (CONTEXT: Acknowledgement).
 Acknowledgement = Literal["wait", "saved", "look"]
@@ -39,6 +41,9 @@ class Text:
 
     words: str
     links: tuple[str, ...] = ()
+    annotation: str = (
+        ""  # the Owner's short text sent just before it, in a message of its own (ADR-025)
+    )
 
 
 @dataclass(frozen=True)
@@ -48,7 +53,10 @@ class Attachment:
     file_id: str
     mime: str | None
     size: int | None
-    caption: str = ""  # the Owner's words sent with it; becomes the Annotation
+    caption: str = ""  # the words sent with it; becomes the Annotation
+    annotation: str = (
+        ""  # the Owner's short text sent just before it, in a message of its own (ADR-025)
+    )
     file_name: str | None = None  # a document's name; None for a photo, voice or round video
     duration_s: int | None = None
     preview: tuple[bytes, str] | None = None  # Telegram's small preview as (bytes, mime)
@@ -69,6 +77,16 @@ class BotResult:
 
 
 Payload = Text | Attachment | BotResult
+
+
+def _owner_words(annotation: str, words: str, forwarded: bool) -> tuple[str, str | None]:
+    """(the Owner's words, the caption): a short text sent before a forward is all the Owner said."""
+    said, own = annotation.strip(), words.strip()
+    if not said:
+        return words, None
+    if forwarded:
+        return said, own or None
+    return f"{said}\n\n{own}" if own else said, None
 
 
 @dataclass(frozen=True)
@@ -107,6 +125,7 @@ async def capture(
         "now": now,
     }
     due: datetime | None = None
+    forwarded = origin.sender is not None
     if isinstance(payload, BotResult):
         if origin.chat_id is None or origin.message_id is None:
             raise ValueError("a BotResult is its result message: the Origin must name it")
@@ -127,6 +146,7 @@ async def capture(
         log.info("notes: capture bot_result %s → item %s", got.outcome, got.item.id)
         return Captured(got.item, got.outcome, "saved", None, enrich=False)
     if isinstance(payload, Attachment):
+        said, caption = _owner_words(payload.annotation, payload.caption, forwarded)
         if payload.speech:
             item = await asyncio.to_thread(
                 items.capture_voice,
@@ -135,8 +155,9 @@ async def capture(
                 file_mime=payload.mime,
                 file_size=payload.size,
                 duration_s=payload.duration_s,
-                annotation=payload.caption,
+                annotation=said,
                 preview=payload.preview,
+                caption=caption,
                 **where,
             )
             kind = "voice"
@@ -148,8 +169,9 @@ async def capture(
                 file_name=payload.file_name,
                 file_mime=payload.mime,
                 file_size=payload.size,
-                annotation=payload.caption,
+                annotation=said,
                 preview=payload.preview,
+                caption=caption,
                 **where,
             )
             kind = "file"
@@ -158,18 +180,17 @@ async def capture(
         extracted = extract_urls(payload.words, linked=payload.links)
         if len(extracted.urls) == 1:
             kind = "link"
-            got = await asyncio.to_thread(
-                items.capture_link, db, extracted.urls[0], extracted.annotation, **where
-            )
+            # A Link keeps its post's words with the Owner's: Enrichment fetches the caption itself.
+            said, _ = _owner_words(payload.annotation, extracted.annotation, forwarded=False)
+            got = await asyncio.to_thread(items.capture_link, db, extracted.urls[0], said, **where)
             item, outcome = got.item, got.outcome
-            if outcome == "existing" and extracted.annotation.strip():
-                notice = await reminders.request_due(
-                    db, classifier, item, extracted.annotation, now=now
-                )
+            if outcome == "existing" and said.strip():
+                notice = await reminders.request_due(db, classifier, item, said, now=now)
                 item, due = notice.item, notice.due
         else:
             kind = "note"
-            item = await asyncio.to_thread(items.capture_note, db, payload.words, **where)
+            said, caption = _owner_words(payload.annotation, payload.words, forwarded)
+            item = await asyncio.to_thread(items.capture_note, db, said, caption=caption, **where)
             outcome = "new"
     log.info("notes: capture %s %s → item %s", kind, outcome, item.id)
     acknowledgement: Acknowledgement = "wait"

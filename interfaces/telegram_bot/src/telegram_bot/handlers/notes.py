@@ -27,45 +27,58 @@ router = Router(name="notes")
 
 @router.message(routing.takes("capture_text"))
 async def direct_text_handler(
-    message: Message, bot: Bot, notes: NotesRuntime | None, path: routing.Path, cards: CardBook
+    message: Message,
+    bot: Bot,
+    notes: NotesRuntime | None,
+    path: routing.Path,
+    cards: CardBook,
+    annotation: str | None = None,
 ) -> None:
     """Text and social links go straight to notes as one Link or Note (ADR-0007, ADR-0009); a long text also gets a voice offer."""
     user = message.from_user
     if user is None:
         return
     if notes is None:  # notes are down: a social link still gets the agents' card
-        draft = draft_of(message)
+        draft = draft_of(message, annotation)
         urls = links_of(draft)
         if len(urls) == 1 and not path.voice_offer:
             await cards.offer_link(message, urls[0], user.id, draft)
         else:
             await notes_ui.react(bot, message.chat.id, message.message_id, notes_ui.EMOJI["look"])
     else:
-        await notes_capture.capture_message(notes, bot, message)
+        await notes_capture.capture_message(notes, bot, message, annotation)
     if path.voice_offer:  # a long text: saved as any text, then the voice-over is offered (ADR-024)
         await cards.offer_voice(message, routing.incoming_of(message).text, user.id)
 
 
 @router.message(routing.takes("capture_file"))
 async def file_handler(
-    message: Message, bot: Bot, notes: NotesRuntime | None, path: routing.Path
+    message: Message,
+    bot: Bot,
+    notes: NotesRuntime | None,
+    path: routing.Path,
+    annotation: str | None = None,
 ) -> None:
     """A photo or non-text file is saved as a File Item, with its preview for the Mini App."""
     if notes is None:
         await notes_ui.react(bot, message.chat.id, message.message_id, notes_ui.EMOJI["look"])
         return
-    await notes_capture.capture_message(notes, bot, message)
+    await notes_capture.capture_message(notes, bot, message, annotation)
 
 
 @router.message(routing.takes("capture_voice"))
 async def voice_handler(
-    message: Message, bot: Bot, notes: NotesRuntime | None, path: routing.Path
+    message: Message,
+    bot: Bot,
+    notes: NotesRuntime | None,
+    path: routing.Path,
+    annotation: str | None = None,
 ) -> None:
     """A voice or round video message becomes a Voice; Enrichment transcribes it."""
     if notes is None:
         await notes_ui.react(bot, message.chat.id, message.message_id, notes_ui.EMOJI["look"])
         return
-    await notes_capture.capture_message(notes, bot, message)
+    await notes_capture.capture_message(notes, bot, message, annotation)
 
 
 @router.callback_query(JobCB.filter(F.action == "save"))

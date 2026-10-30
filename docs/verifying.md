@@ -130,6 +130,7 @@ from telegram_bot import db
 from telegram_bot.access import AccessMiddleware
 from telegram_bot import notes_runtime
 from telegram_bot.cards import CardBook, DropOfferMiddleware
+from telegram_bot.pairing import Pairing, PairingMiddleware
 from telegram_bot.handlers import setup_routers
 from telegram_bot.worker import JobQueue
 
@@ -151,8 +152,10 @@ bot = Bot(token="42:TEST", session=(tg := Rec()))
 dp = Dispatcher(); dp["queue"] = JobQueue()
 dp["notes"] = notes_runtime.build_runtime()  # or NotesRuntime(db=..., http=fake, classifier=FakeClassifier())
 dp["cards"] = CardBook(intake=Stub())        # Stub: the Intake port below
+dp["pairing"] = Pairing()
 dp.update.outer_middleware(AccessMiddleware())
-dp.message.outer_middleware(DropOfferMiddleware())   # from telegram_bot.cards; as in __main__.py
+dp.message.outer_middleware(PairingMiddleware())     # as in __main__.py: first, then DropOffer
+dp.message.outer_middleware(DropOfferMiddleware())
 setup_routers(dp)
 # await dp.feed_update(bot, Update(update_id=1, message=Message(..., from_user=User(id=100,...))))
 # 100 is the Owner; any other id is a stranger
@@ -162,6 +165,9 @@ Voice-offer staleness compares message ids: feed Owner `message_id`s that keep r
 bot ids (`mid = tg.mid + 1`, then set `tg.mid = mid`), so they order correctly against each other and
 against the status id of a card opened from a button; out of order, an offer is silently stale.
 For a burst (two Owner messages before any bot reply), reserve both ids first (`tg.mid += 2`).
+An Owner's short text with no link waits 1.5 s in `PairingMiddleware` (ADR-025): feed a text and the
+message it annotates as two `asyncio.create_task(dp.feed_update(...))` started in order, as polling does,
+with Telegram `date`s at most 1 s apart; awaiting each feed in turn keeps them two Items.
 
 - **Network:** stub it at the `Intake` seam. `dp["cards"] = CardBook(intake=Stub())` where
   `Stub.scrape` returns a `ScrapedArticle` and `Stub.preview` a `Preview`; YouTube links then work

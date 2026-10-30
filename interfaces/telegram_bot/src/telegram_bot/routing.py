@@ -34,6 +34,7 @@ class Incoming:
     linked: tuple[str, ...] = ()  # URLs behind text (text_link entities), text or caption
     media: Media = "none"  # "other": audio, sticker, contact… (never routed)
     filename: str | None = None  # a document's file_name (None → "document")
+    forwarded: bool = False  # it has a forward origin: its words are not the Owner's own
 
 
 @dataclass(frozen=True)
@@ -87,6 +88,7 @@ def incoming_of(message: Message) -> Incoming:
         linked=tuple(e.url for e in entities if e.type == "text_link" and e.url),
         media=media,
         filename=message.document.file_name if message.document is not None else None,
+        forwarded=message.forward_origin is not None,
     )
 
 
@@ -112,6 +114,24 @@ def route(m: Incoming) -> Path:
         return Path("capture_text")
     urls = extract_urls(m.text).urls  # a command's link: no 💾, and its hidden links do not count
     return Path("link_card", url=urls[0]) if urls else IGNORE
+
+
+def may_annotate(m: Incoming) -> bool:
+    """The Owner's own short text with no link: it may be the Annotation of a post sent with it (ADR-025)."""
+    if m.media != "none" or m.forwarded or not m.text or m.text.startswith("/"):
+        return False
+    found = extract_urls(m.text, linked=m.linked)
+    return not found.urls and not is_long_text(found.annotation)
+
+
+def takes_annotation(m: Incoming) -> bool:
+    """A message notes can save with the Owner's words: a link, a forward, a photo, file or voice."""
+    if may_annotate(m):
+        return False
+    path = route(m)
+    return path.kind in ("capture_text", "capture_file", "capture_voice") or (
+        path.kind == "link_card" and path.savable
+    )
 
 
 def takes(*kinds: Kind) -> Callable[[Message], Awaitable[dict[str, Path] | bool]]:

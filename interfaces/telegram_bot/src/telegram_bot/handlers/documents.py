@@ -75,12 +75,15 @@ async def document_handler(message: Message, bot: Bot, path: routing.Path, cards
 
 
 @router.message(routing.takes("link_card"))
-async def link_handler(message: Message, path: routing.Path, cards: CardBook) -> None:
-    """A link → card; a single website link also offers 💾 (ADR-015 §4)."""
+async def link_handler(
+    message: Message, path: routing.Path, cards: CardBook, annotation: str | None = None
+) -> None:
+    """A link → card; a single website link also offers 💾, with the short text sent with it (ADR-015 §4, ADR-025)."""
     user = message.from_user
     if user is None or path.url is None:
         return
-    await cards.offer_link(message, path.url, user.id, draft_of(message) if path.savable else None)
+    draft = draft_of(message, annotation) if path.savable else None
+    await cards.offer_link(message, path.url, user.id, draft)
 
 
 @router.callback_query(JobCB.filter(F.action == "run"))

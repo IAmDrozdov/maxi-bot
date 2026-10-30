@@ -59,6 +59,13 @@ router order is not part of the rule. One row per `Kind`:
 | `capture_voice` | a voice or round video → a Voice, transcribed in Enrichment | `notes.voice_handler` |
 | `ignore` | everything else: a command, a sticker, audio… | nothing |
 
+**A short text sent with a share or forward (ADR-025).** Before routing, `PairingMiddleware` (the
+first message middleware after access) holds an Owner's own short text with no link
+(`routing.may_annotate`) for 1.5 s. A message after it, dated at most 1 s later, that notes can save
+with words (`routing.takes_annotation`: a link, a forward, a photo, file or voice) takes the text as
+its Annotation and its handler gets `annotation`; the text's own message is then never handled and gets
+no reaction. A text nothing took goes on to `capture_text` as before.
+
 Other routers: `start` (`/start` and `/help`, one help text; a bare `/dub`, one hint), `settings_menu` and `status`
 (`/settings`, `/status`, `/cancel`).
 `documents` also takes `JobCB dismiss` (✖️ on a voice offer). `notes` also takes the callbacks `JobCB save`, `ResultCB` (💾 under a delivered result, below) and
@@ -111,7 +118,8 @@ four ways, none of which leaves a "Cancelled" line:
 - ✖️ (`JobCB dismiss`) deletes the message; it takes the same per-user run lock as Run, so a message
   Run has just made a job is only answered, never deleted;
 - the Owner's next message of any kind (`DropOfferMiddleware`, an outer message middleware registered
-  after `AccessMiddleware`) deletes a live offer that has not become a job, and so does a card opened for a
+  after `PairingMiddleware`) deletes a live offer that has not become a job (an older message that
+  reaches it late, a short text pairing held, leaves a newer text's offer alone), and so does a card opened for a
   newer message than the offer's own, or from a button (`offer_link(from_button=True)`); a card for an
   older message in a burst leaves a newer text's offer alone; a new offer deletes the previous one, so two long texts in a row leave one;
 - an offer is not sent when a newer message arrived while it was priced (the middleware records the newest
@@ -131,7 +139,8 @@ The three Capture Paths (`direct_text_handler`, `file_handler`, `voice_handler`)
 `notes_capture.capture_message`; 💾 on a card (`save_handler`) takes the card's `Draft` from the
 card book. Both reach `notes.capture.capture` (a `Text` or an `Attachment` with an `Origin`): one
 Item per Capture, `capture_link` with dedupe for exactly one URL, else a Note with the whole text,
-a File or a Voice. `notes_capture.settle` then shows what the Capture decided (the Due line, the
+a File or a Voice. A short text paired with the message (ADR-025) comes first in the Item's `text`; on a
+forwarded Note, File or Voice it is the whole `text` and the forward's words are its `caption`. `notes_capture.settle` then shows what the Capture decided (the Due line, the
 reaction) and `NotesRuntime.enrich_later` (`telegram_bot/notes_runtime.py`) starts
 `notes.enrich.pipeline.enrich_item`. The bot sends no message of its own (a Reminder and the diary Nudge are the exceptions): the Acknowledgement
 is its one reaction on the Owner's message (`notes_ui.react`, `notes_ui.reaction_of`): ✍ working, then
@@ -322,6 +331,8 @@ These are lost on every restart, and a deploy is a restart:
 - The card book (`dp["cards"]`): pending cards and voice offers (TTL 30 min, 60 MB cap together),
   savables (the Owner's Drafts), and the live/closed marks. A restart leaves an offer in the chat until
   it is tapped (Run then answers "expired" and deletes it; ✖️ just deletes it).
+- The pairing book (`dp["pairing"]`, ADR-025): short texts held for the post sent with them. A restart
+  inside the 1.5 s hold only loses the pairing; the text and the post arrive again as two Items.
 - The job queue.
 
 After a restart, old card buttons answer "expired", and a job left running is marked `interrupted`

@@ -635,5 +635,6 @@ class DropOfferMiddleware(BaseMiddleware):
         cards, bot = data.get("cards"), data.get("bot")
         if isinstance(event, Message) and isinstance(cards, CardBook) and bot is not None:
             cards.saw(event.chat.id, event.message_id)  # first: a pricing offer must see it
-            await cards.discard_offer(bot, event.chat.id)
+            # A text pairing held reaches here late; it leaves a newer text's offer alone (ADR-025).
+            await cards.discard_offer(bot, event.chat.id, origin_below=event.message_id)
         return await handler(event, data)

@@ -41,7 +41,12 @@ bot chat's URL) live in `CLAUDE.local.md`, which is gitignored because this repo
 - Telegram's buttons ignore a synthetic `.click()`: use the MCP `click` with a uid from a snapshot.
   The menu button shows up as `button "Open bot command keyboard"`.
 - Forwarding: open the message's context menu (right-click, or hover → the arrow), choose Forward,
-  pick the bot's chat. The forwarded copy reaches the bot with `forward_origin` set.
+  pick the bot's chat. The forwarded copy reaches the bot with `forward_origin` set, unless the owner
+  wrote it: Telegram drops the header on the owner's own message (from «Избранное» too), so it arrives
+  as a plain message. Forward something another author wrote, such as the bot's reply to `/status`.
+  For a forward with a comment, tick the bot's chat in «Share with» and press FORWARD. The bot chat then
+  opens with the forward bar in the composer. Type the comment and press Enter: Telegram sends the
+  comment first and the forward right after it, in the same second (ADR-025).
 - The Mini App opens in an iframe modal, and the snapshot exposes its own controls, so `click` and
   `fill` work in place. Telegram's native confirm shows as a parent dialog with OK / CANCEL; its back
   button and main button («✓ Готово» on the Item view, ADR-021) are parent-page controls too, and

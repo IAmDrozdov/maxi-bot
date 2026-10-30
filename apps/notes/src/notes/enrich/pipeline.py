@@ -48,7 +48,7 @@ def build_request(
         source=fetched.source if fetched else None,
         title=fetched.title if fetched else None,
         author=fetched.author if fetched else None,
-        caption=fetched.caption if fetched else None,
+        caption=fetched.caption if fetched else item.caption,  # a forward's words (ADR-025)
         annotation=item.text,
         sender=item.sender,
         transcript=transcript,
@@ -264,7 +264,7 @@ def _store(
         title=result.title or (fetched.title if fetched else None),
         source=fetched.source if fetched else None,
         author=result.author or (fetched.author if fetched else None),
-        caption=fetched.caption if fetched else None,
+        caption=fetched.caption if fetched else item.caption,
         image_url=fetched.image_url if fetched else None,
         error=error,
         now=now,
