@@ -87,6 +87,7 @@ async def _run(
             ("caption", item.caption),
             ("transcript", head or None),
             ("filing", [s.slug for s in item.sections]),
+            ("footnote", [s.slug for s in item.footnote]),
             ("gist", item.gist),
             ("due", clock.iso(item.due_at) if item.due_at else None),
             ("thumbnail", "yes" if item.thumb else "no"),

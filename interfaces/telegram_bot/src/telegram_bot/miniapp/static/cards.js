@@ -157,6 +157,7 @@ export function row(item, opts = {}) {
   if (item.due_at) mark(`⏰ ${item.overdue ? "просрочено · " : ""}${fmtDue(item.due_at)}`, item.overdue ? "late" : null);
   if (item.enrichment_status === "pending") mark("⏳ разбираю");
   else if (item.enrichment_status === "failed") mark("⚠️ не разобрано", "late");
+  for (const section of item.footnote ?? []) mark(sectionLabel(section)); // what a Main Section took it from (notes ADR-0014)
   if (meta.childNodes.length) node.append(meta);
 
   wrap.append(left, right, node);

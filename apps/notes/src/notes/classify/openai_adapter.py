@@ -60,6 +60,13 @@ SYSTEM_PROMPT = (
 «подумать», «купить», «по работе», название проекта), выбирай по его словам, даже если \
 описание говорит о другом. Описание, заголовок и картинка решают, только когда слов владельца \
 нет или они ничего не говорят о секции. "other" — только если не подходит ничего.
+- Секция с "main": true — главная. Что ей подходит, а что нет, решает её подсказка. Если \
+сохранённое ей подходит, включи её в sections вместе с остальными подходящими секциями, даже когда \
+владелец написал «посмотреть» или «почитать»: заметка ляжет только в главную, а остальные станут \
+сноской в её карточке.
+- owner_sections: slug секций, которые владелец прямо назвал своими словами как тему или проект \
+(«по работе», «в пет-проект», название проекта). Слова о том, что с этим сделать («посмотреть», \
+«почитать», «подумать», «купить»), сюда не входят. Если таких слов нет, верни [].
 - gist: одно-два предложения по-русски, без эмодзи и хэштегов: что это и чем может \
 пригодиться. Не начинай с «Это» и не пересказывай заголовок дословно.
 - title: чистый заголовок без названия сайта, хэштегов и эмодзи, на языке оригинала; \
@@ -92,6 +99,7 @@ class _DueAnswer(BaseModel):
 
 class _Answer(BaseModel):
     sections: list[str]
+    owner_sections: list[str]
     gist: str
     title: str | None
     author: str | None
@@ -113,7 +121,10 @@ def render_request(request: FilingRequest) -> str:
         "owner_words": request.annotation or None,
         "sender": request.sender,
     }
-    sections = [{"slug": s.slug, "name": s.name, "hint": s.hint} for s in request.sections]
+    sections = [
+        {"slug": s.slug, "name": s.name, "hint": s.hint} | ({"main": True} if s.main else {})
+        for s in request.sections
+    ]
     now = {"now": request.now_local, "zone": request.zone}
     return json.dumps({"item": item, "sections": sections} | now, ensure_ascii=False, indent=1)
 
@@ -156,9 +167,13 @@ class OpenAIClassifier:
         if answer is None:
             raise ClassifierUnavailable("empty structured answer")
         known = {s.slug for s in request.sections}
+        main = {s.slug for s in request.sections if s.main}
         slugs = [slug for slug in dict.fromkeys(answer.sections) if slug in known]
+        slugs.sort(key=lambda slug: slug not in main)  # the cap below never drops a Main pick
+        named = [slug for slug in dict.fromkeys(answer.owner_sections) if slug in known]
         return Filing(
             sections=slugs[:MAX_SECTIONS],
+            named=named[:MAX_SECTIONS],
             gist=answer.gist.strip(),
             title=(answer.title or "").strip() or None,
             author=(answer.author or "").strip() or None,

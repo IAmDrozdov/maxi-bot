@@ -14,9 +14,11 @@ from notes.db import Database
 from notes.domain import clock
 from notes.domain.sections import (
     Section,
+    file_by_classifier,
     file_in_other,
     filing_of,
     filings_of,
+    footnotes_of,
     in_other_alone,
     refile,
 )
@@ -83,6 +85,7 @@ class Item:
     updated_at: str
     sections: tuple[Section, ...]
     thumb: str | None = None  # the stored Thumbnail's etag
+    footnote: tuple[Section, ...] = ()  # never one of `sections` (notes ADR-0014)
 
 
 @dataclass(frozen=True)
@@ -93,7 +96,10 @@ class Capture:
     outcome: CaptureOutcome
 
 
-def row_to_item(row: sqlite3.Row, filing: tuple[Section, ...]) -> Item:
+def row_to_item(
+    row: sqlite3.Row, filing: tuple[Section, ...], footnote: tuple[Section, ...] = ()
+) -> Item:
+    own = {section.id for section in filing}
     return Item(
         id=int(row["id"]),
         kind=row["kind"],
@@ -130,6 +136,7 @@ def row_to_item(row: sqlite3.Row, filing: tuple[Section, ...]) -> Item:
         updated_at=row["updated_at"],
         sections=filing,
         thumb=row["thumb"],
+        footnote=tuple(section for section in footnote if section.id not in own),
     )
 
 
@@ -138,13 +145,18 @@ def fetch(conn: sqlite3.Connection, item_id: int) -> Item:
     row = conn.execute(f"{ITEM_SELECT} WHERE id=?", (item_id,)).fetchone()
     if row is None:
         raise KeyError(item_id)
-    return row_to_item(row, filing_of(conn, item_id))
+    footnote = footnotes_of(conn, [item_id]).get(item_id, ())
+    return row_to_item(row, filing_of(conn, item_id), footnote)
 
 
 def rows_to_items(conn: sqlite3.Connection, rows: Sequence[sqlite3.Row]) -> list[Item]:
-    """Items for ITEM_SELECT rows, their Filings loaded in one read."""
-    filings = filings_of(conn, [int(row["id"]) for row in rows])
-    return [row_to_item(row, filings.get(int(row["id"]), ())) for row in rows]
+    """Items for ITEM_SELECT rows, their Filings and Footnotes loaded in one read each."""
+    ids = [int(row["id"]) for row in rows]
+    filings, footnotes = filings_of(conn, ids), footnotes_of(conn, ids)
+    return [
+        row_to_item(row, filings.get(item_id, ()), footnotes.get(item_id, ()))
+        for item_id, row in zip(ids, rows, strict=True)
+    ]
 
 
 def fetch_many(conn: sqlite3.Connection, item_ids: Sequence[int]) -> list[Item]:
@@ -394,6 +406,7 @@ def store_enrichment(
     item_id: int,
     *,
     sections: Sequence[str],
+    named: Sequence[str] = (),
     gist: str | None = None,
     title: str | None = None,
     source: str | None = None,
@@ -417,7 +430,7 @@ def store_enrichment(
         if cur.rowcount == 0:
             raise KeyError(item_id)
         if in_other_alone(conn, item_id):
-            refile(conn, item_id, sections)
+            file_by_classifier(conn, item_id, sections, named)
         return fetch(conn, item_id)
 
 

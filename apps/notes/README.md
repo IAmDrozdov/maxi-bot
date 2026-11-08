@@ -6,7 +6,7 @@ in the Mini App (ADR-016). A result the bot delivered (a translated document, au
 it: a BotResult, kept in the built-in Section «От бота» with no Enrichment (ADR-0013). Merged in from the standalone `maxi-notes` repo (ADR-015).
 
 - Vocabulary: `CONTEXT.md` (separate from the repo glossary: **Source** means something else here)
-- Decisions: `docs/decisions/0001–0013` · Spec: `docs/spec.md` · Tickets: `docs/tickets/`
+- Decisions: `docs/decisions/0001–0014` · Spec: `docs/spec.md` · Tickets: `docs/tickets/`
 
 ## Layout
 

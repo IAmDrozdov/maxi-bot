@@ -191,6 +191,7 @@ export function openDetail({ list, scrolls, host, item, fresh = false, focus = n
     const sectionsToggle = el("button", "chip filter link");
     sectionsToggle.onclick = () => showSections(!state.sectionsOpen);
     sectionRow.append(sectionsToggle);
+    const footnote = el("div", "hint"); // the Sections a Main Section took the item from (notes ADR-0014)
 
     const noteTitle = el("h3");
     const field = el("div", "field");
@@ -220,9 +221,9 @@ export function openDetail({ list, scrolls, host, item, fresh = false, focus = n
     dueClear.onclick = removeDue;
     dueRow.append(dueAdd, dueInput, dueClear);
 
-    box.append(head, el("h3", null, "Секции"), sectionRow, el("h3", null, "Напоминание"), dueRow, noteTitle, field);
+    box.append(head, el("h3", null, "Секции"), sectionRow, footnote, el("h3", null, "Напоминание"), dueRow, noteTitle, field);
     host.replaceChildren(bar, box);
-    return { box, head, sectionButtons, sectionsToggle, noteTitle, area, save, dueAdd, dueInput, dueClear };
+    return { box, head, sectionButtons, sectionsToggle, footnote, noteTitle, area, save, dueAdd, dueInput, dueClear };
   }
 
   function menuItems() {
@@ -370,7 +371,7 @@ export function openDetail({ list, scrolls, host, item, fresh = false, focus = n
 
   // Brings the view in line with `item`: only what differs is touched.
   function sync(item) {
-    const { head, sectionButtons, sectionsToggle, noteTitle, area, save, dueAdd, dueInput, dueClear } = parts;
+    const { head, sectionButtons, sectionsToggle, footnote, noteTitle, area, save, dueAdd, dueInput, dueClear } = parts;
     slot(head, JSON.stringify(HEAD_FIELDS.map((field) => item[field])), () => headNodes(item));
     const current = new Set(item.sections.map((section) => section.slug));
     for (const [slug, button] of sectionButtons) {
@@ -378,6 +379,9 @@ export function openDetail({ list, scrolls, host, item, fresh = false, focus = n
       button.hidden = !state.sectionsOpen && !current.has(slug);
     }
     setText(sectionsToggle, state.sectionsOpen ? "Свернуть" : "Изменить…");
+    const foot = (item.footnote ?? []).filter((section) => !current.has(section.slug));
+    setText(footnote, foot.length ? `Ещё подходит: ${foot.map(sectionLabel).join(" · ")}` : "");
+    footnote.hidden = !foot.length;
     setText(noteTitle, item.kind === "note" ? "Текст заметки" : "Моя пометка");
     const saved = item.text || "";
     if (state.draft == null && area.value !== saved) area.value = saved;

@@ -17,6 +17,7 @@ class SectionBrief(BaseModel):
     slug: str
     name: str
     hint: str
+    main: bool = False  # a Main Section takes an Item alone (notes ADR-0014)
 
 
 class FilingRequest(BaseModel):
@@ -48,6 +49,7 @@ class FilingRequest(BaseModel):
 
 class Filing(BaseModel):
     sections: list[str] = Field(default_factory=list)
+    named: list[str] = Field(default_factory=list)  # the Sections the Owner's words name as a topic
     gist: str = ""
     title: str | None = None
     author: str | None = None

@@ -593,6 +593,8 @@ a.title { color: var(--link); text-decoration: underline; text-decoration-thickn
 
 /* Section form */
 .field-label { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.check-row { display: flex; align-items: center; gap: 10px; min-height: 40px; cursor: pointer; }
+.check-row input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
 .input {
   width: 100%;
   min-height: 40px;

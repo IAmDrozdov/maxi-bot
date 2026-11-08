@@ -39,6 +39,7 @@ class SectionIn(BaseModel):
     emoji: str = Field(default="", max_length=50)
     color: str = Field(default="#8a8a8a", max_length=20)
     hint: str = Field(default="", max_length=1000)
+    is_main: bool = False
 
 
 class SectionPatch(BaseModel):
@@ -47,6 +48,7 @@ class SectionPatch(BaseModel):
     emoji: str | None = Field(default=None, max_length=50)
     color: str | None = Field(default=None, max_length=20)
     hint: str | None = Field(default=None, max_length=1000)
+    is_main: bool | None = None
 
 
 class OrderBody(BaseModel):
@@ -66,7 +68,7 @@ HIDDEN_FIELDS = frozenset(
     {
         "url_normalized", "image_url", "file_id", "done_at", "enrichment_attempts",
         "tg_chat_id", "tg_ack_message_id", "show_requested_at", "reminded_at", "updated_at",
-        "sections",
+        "sections", "footnote",
     }
 )  # fmt: skip
 SECTION_FIELDS = ("id", "slug", "name", "emoji", "color")
@@ -76,6 +78,7 @@ def _item_json(item: Item) -> dict[str, Any]:
     """An Item as the page reads it, list and item view alike: the Due as ISO UTC."""
     data = {f.name: getattr(item, f.name) for f in fields(item) if f.name not in HIDDEN_FIELDS}
     data["sections"] = [{key: getattr(s, key) for key in SECTION_FIELDS} for s in item.sections]
+    data["footnote"] = [{key: getattr(s, key) for key in SECTION_FIELDS} for s in item.footnote]
     data["overdue"] = reminders.is_overdue(item)
     if item.due_at:
         data["due_at"] = clock.iso(item.due_at)

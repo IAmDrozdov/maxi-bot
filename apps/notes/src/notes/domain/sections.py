@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 
 from notes.db import Database
@@ -147,6 +147,7 @@ class Section:
     hint: str
     is_builtin: bool
     position: int
+    is_main: bool = False  # a Main Section takes an Item alone (notes ADR-0014)
 
 
 def _row_to_section(row: sqlite3.Row) -> Section:
@@ -159,6 +160,7 @@ def _row_to_section(row: sqlite3.Row) -> Section:
         hint=row["hint"],
         is_builtin=bool(row["is_builtin"]),
         position=int(row["position"]),
+        is_main=bool(row["is_main"]),
     )
 
 
@@ -303,7 +305,13 @@ def _name_taken(conn: sqlite3.Connection, name: str, *, except_id: int | None = 
 
 
 def create_section(
-    db: Database, *, name: str, emoji: str = "", color: str = "#8a8a8a", hint: str = ""
+    db: Database,
+    *,
+    name: str,
+    emoji: str = "",
+    color: str = "#8a8a8a",
+    hint: str = "",
+    is_main: bool = False,
 ) -> Section:
     """Add a Section just before Other; the slug comes from the name and never changes."""
     name, emoji, color, hint = _validated(name, emoji, color, hint)
@@ -322,6 +330,7 @@ def create_section(
             new_id = _insert_before_other(conn, (slug, name, emoji, color, hint), is_builtin=False)
         except sqlite3.IntegrityError as exc:  # a double tap created it a moment ago
             raise SectionError(f"Секция «{name}» уже есть") from exc
+        conn.execute("UPDATE sections SET is_main=? WHERE id=?", (int(is_main), new_id))
         row = conn.execute("SELECT * FROM sections WHERE id=?", (new_id,)).fetchone()
         return _row_to_section(row)
 
@@ -334,6 +343,7 @@ def update_section(
     emoji: str | None = None,
     color: str | None = None,
     hint: str | None = None,
+    is_main: bool | None = None,
 ) -> Section | None:
     """Change what the Owner sees of a Section; None if it is missing. The slug is never touched."""
     with db.session() as conn:
@@ -350,9 +360,12 @@ def update_section(
             raise SectionError(f"Секция «{name}» уже есть")
         if owner := _mark_owner(conn, emoji, except_id=section_id):
             raise SectionError(f"Иконка {emoji} уже у секции «{owner}»")
+        main = bool(row["is_main"]) if is_main is None else is_main
+        if main and row["slug"] in (OTHER_SLUG, FROM_BOT_SLUG):
+            raise SectionError(f"«{row['name']}» не может быть главной")
         conn.execute(
-            "UPDATE sections SET name=?, emoji=?, color=?, hint=? WHERE id=?",
-            (name, emoji, color, hint, section_id),
+            "UPDATE sections SET name=?, emoji=?, color=?, hint=?, is_main=? WHERE id=?",
+            (name, emoji, color, hint, int(main), section_id),
         )
         return _row_to_section(
             conn.execute("SELECT * FROM sections WHERE id=?", (section_id,)).fetchone()
@@ -438,6 +451,38 @@ def refile(conn: sqlite3.Connection, item_id: int, slugs: Sequence[str]) -> None
     )
 
 
+def split_filing(
+    picks: Sequence[str], named: Sequence[str], main: Collection[str]
+) -> tuple[list[str], list[str]]:
+    """The Classifier's picks as (Filing, Footnote), notes ADR-0014.
+
+    A Main pick takes the Item, together with the Sections the Owner's words named; the other picks are the Footnote.
+    """
+    if not any(slug in main for slug in picks):
+        return list(picks), []
+    builtin = (OTHER_SLUG, FROM_BOT_SLUG)
+    home = list(
+        dict.fromkeys([*(s for s in picks if s in main), *(s for s in named if s not in builtin)])
+    )
+    return home, [s for s in picks if s not in home and s not in builtin]
+
+
+def file_by_classifier(
+    conn: sqlite3.Connection, item_id: int, picks: Sequence[str], named: Sequence[str]
+) -> None:
+    """Replace the Filing and the Footnote with what the Classifier chose (notes ADR-0014)."""
+    main = {row["slug"] for row in conn.execute("SELECT slug FROM sections WHERE is_main=1")}
+    home, footnote = split_filing(picks, named, main)
+    refile(conn, item_id, home)
+    conn.execute("DELETE FROM item_footnotes WHERE item_id=?", (item_id,))
+    if footnote:
+        conn.execute(
+            "INSERT INTO item_footnotes(item_id, section_id) SELECT ?, id FROM sections "
+            f"WHERE slug IN ({','.join('?' * len(footnote))})",
+            (item_id, *footnote),
+        )
+
+
 def in_other_alone(conn: sqlite3.Connection, item_id: int) -> bool:
     """Whether the Classifier may still file the Item: it is in Other alone, or in nothing (ADR-0010)."""
     rows = conn.execute(
@@ -460,11 +505,24 @@ def filing_of(conn: sqlite3.Connection, item_id: int) -> tuple[Section, ...]:
 
 def filings_of(conn: sqlite3.Connection, item_ids: Sequence[int]) -> dict[int, tuple[Section, ...]]:
     """The Sections of many Items in list order, in one read per 500 ids; an Item with none is absent."""
+    return _sections_by_item(conn, "item_sections", item_ids)
+
+
+def footnotes_of(
+    conn: sqlite3.Connection, item_ids: Sequence[int]
+) -> dict[int, tuple[Section, ...]]:
+    """The Footnotes of many Items in list order, as stored: they may name a Section the Item is in."""
+    return _sections_by_item(conn, "item_footnotes", item_ids)
+
+
+def _sections_by_item(
+    conn: sqlite3.Connection, table: str, item_ids: Sequence[int]
+) -> dict[int, tuple[Section, ...]]:
     found: dict[int, list[Section]] = {}
     for start in range(0, len(item_ids), 500):
         chunk = item_ids[start : start + 500]
         rows = conn.execute(
-            "SELECT i.item_id, s.* FROM sections s JOIN item_sections i ON i.section_id = s.id "
+            f"SELECT i.item_id, s.* FROM sections s JOIN {table} i ON i.section_id = s.id "
             f"WHERE i.item_id IN ({','.join('?' * len(chunk))}) "
             "ORDER BY i.item_id, s.position, s.id",
             list(chunk),

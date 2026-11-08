@@ -61,6 +61,16 @@ function labelled(box, label, type, value, attrs = {}) {
   return input;
 }
 
+function checked(box, label, value, why) {
+  const wrap = el("label", "check-row");
+  const input = el("input");
+  input.type = "checkbox";
+  input.checked = value;
+  wrap.append(input, el("span", null, label));
+  box.append(wrap, el("div", "hint", why));
+  return input;
+}
+
 // Grows a textarea to its text, so a long hint reads without scrolling inside the box.
 function fitHeight(area, scroller) {
   const y = scroller.scrollTop; // the "auto" reset shortens the content for a moment and would move it
@@ -115,12 +125,23 @@ export function openSectionForm({ list, scrolls, host, section, sections, saved,
         rows: 3,
       });
   if (hint) hint.oninput = () => fitHeight(hint, host);
+  // A Main Section takes an Item alone; the other Sections it fits become its footnote (notes ADR-0014).
+  const main =
+    fromBot || section?.slug === OTHER
+      ? null
+      : checked(
+          box,
+          "Главная секция",
+          section?.is_main ?? false,
+          "Если заметка подходит сюда, она ляжет только сюда, а другие подходящие секции появятся сноской в её карточке.",
+        );
 
   const actions = el("div", "actions");
   const save = el("button", "btn", "Сохранить");
   save.onclick = async () => {
     const body = { name: name.value, emoji: emoji.value(), color: color.value };
     if (hint) body.hint = hint.value;
+    if (main) body.is_main = main.checked;
     const done = await act(() =>
       section
         ? api(`/notes/sections/${section.id}`, { method: "PATCH", body })

@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS sections (
     hint       TEXT NOT NULL DEFAULT '',
     is_builtin INTEGER NOT NULL DEFAULT 0,
     position   INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    is_main    INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS items_url_normalized
@@ -94,6 +95,13 @@ CREATE TABLE IF NOT EXISTS item_thumbs (
 );
 
 CREATE TABLE IF NOT EXISTS item_sections (
+    item_id    INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    section_id INTEGER NOT NULL REFERENCES sections(id) ON DELETE CASCADE,
+    PRIMARY KEY (item_id, section_id)
+);
+
+-- The Sections a Main Section took the Item from (notes ADR-0014); never its Filing.
+CREATE TABLE IF NOT EXISTS item_footnotes (
     item_id    INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
     section_id INTEGER NOT NULL REFERENCES sections(id) ON DELETE CASCADE,
     PRIMARY KEY (item_id, section_id)
@@ -198,6 +206,8 @@ class Database:
             if "'bot_result'" not in _items_sql(conn):  # the newest thing a rebuild adds
                 _migrate_items(conn)
             conn.executescript(SCHEMA)
+            if "is_main" not in _columns(conn, "sections"):  # notes ADR-0014
+                conn.execute("ALTER TABLE sections ADD COLUMN is_main INTEGER NOT NULL DEFAULT 0")
             filled = conn.execute(
                 "UPDATE items SET done_at=updated_at WHERE status='done' AND done_at IS NULL"
             ).rowcount

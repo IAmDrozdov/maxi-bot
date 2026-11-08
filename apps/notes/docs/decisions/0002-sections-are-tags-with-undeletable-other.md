@@ -1,6 +1,7 @@
 # Sections are tags, and Other is undeletable
 
 _Amended by ADR-0013: From the bot («От бота») is a second built-in Section that cannot be deleted; it holds every BotResult and nothing else._
+_Amended by ADR-0014: when the Classifier picks a Main Section, the Item goes only into it (and any Section the Owner's words name); the other picks become its Footnote._
 
 An Item belongs to one or more Sections (tag semantics, not folders), so a cross-cutting Item — a
 talk that is both *Посмотреть* and *Пет-проекты* — is not forced into one pile. The built-in

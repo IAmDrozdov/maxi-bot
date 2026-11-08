@@ -83,8 +83,16 @@ _Avoid_: misc, uncategorised, inbox, unsorted
 The built-in Section («От бота») that cannot be deleted and holds every BotResult and nothing else. A BotResult never leaves it, though the Owner may file it under other Sections as well; the Classifier never files into it.
 _Avoid_: documents, results, saved, inbox
 
+**Main Section**:
+A Section the Owner marked «Главная». When the Classifier picks it, the Item goes only into it and any Section the Owner's own words name as a topic or project; the other picks become the Item's Footnote (ADR-0014). Other and From the bot are never Main.
+_Avoid_: priority section, primary, pinned, exclusive
+
+**Footnote**:
+The Sections the Classifier also picked for an Item that a Main Section took. The Item's row and card show them, but the Item is not in them. Only the Classifier writes a Footnote, and it never names a Section the Item is in.
+_Avoid_: also, secondary sections, extra tags, сноска (in code)
+
 **Filing**:
-The set of Sections an Item is in; assigned by the Classifier at Capture, changed by the Owner afterwards.
+The set of Sections an Item is in; assigned by the Classifier at Capture, changed by the Owner afterwards. A Footnote is not part of it.
 _Avoid_: tagging, categorisation, classification result, pre-clustering
 
 **Classifier**:

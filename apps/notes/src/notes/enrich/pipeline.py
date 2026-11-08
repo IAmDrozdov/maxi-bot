@@ -54,7 +54,9 @@ def build_request(
         transcript=transcript,
         now_local=clock.local_clock(clock.parse(item.created_at), zone_name),
         zone=zone_name,
-        sections=[SectionBrief(slug=s.slug, name=s.name, hint=s.hint) for s in known],
+        sections=[
+            SectionBrief(slug=s.slug, name=s.name, hint=s.hint, main=s.is_main) for s in known
+        ],
     )
 
 
@@ -260,6 +262,7 @@ def _store(
         db,
         item.id,
         sections=result.sections,
+        named=result.named,
         gist=result.gist or None,
         title=result.title or (fetched.title if fetched else None),
         source=fetched.source if fetched else None,
