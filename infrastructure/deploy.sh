@@ -118,8 +118,11 @@ ssh "${SSH_OPTS[@]}" "root@$IP" "
 echo "==> waiting for the services to come up"
 ssh "${SSH_OPTS[@]}" "root@$IP" "
   for i in \$(seq 1 30); do
+    # Since the bot container's own start: a deploy that leaves the bot running is not a failure.
+    started=\$(docker inspect -f '{{.State.StartedAt}}' \$($COMPOSE ps -q bot) 2>/dev/null || true)
     if curl -fsS http://127.0.0.1:8083/healthz >/dev/null 2>&1 \
-       && $COMPOSE logs --since 5m bot 2>/dev/null | grep -q 'polling as @'; then
+       && [ -n \"\$started\" ] \
+       && $COMPOSE logs --since \"\$started\" bot 2>/dev/null | grep -q 'polling as @'; then
       echo 'OK: miniapp healthy and bot polling'
       exit 0
     fi
