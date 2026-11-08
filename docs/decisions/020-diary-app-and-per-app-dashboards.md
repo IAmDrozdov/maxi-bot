@@ -1,6 +1,6 @@
 # ADR-020: A diary app, and a Dashboard inside each Mini App tab
 
-Status: Accepted (2026-10-08). Amends ADR-016 (decision 1: what the Mini App holds) and ADR-015 (a second app). Decision 4 superseded by ADR-021 (place and mode navigation). Amended 2026-10-11: the bot reaches the diary for the Nudge (below). Amended 2026-10-18: a Suggestion can be dismissed (below).
+Status: Accepted (2026-10-08). Amends ADR-016 (decision 1: what the Mini App holds) and ADR-015 (a second app). Decision 4 superseded by ADR-021 (place and mode navigation). Amended 2026-10-11: the bot reaches the diary for the Nudge (below). Amended 2026-10-18: a Suggestion can be dismissed (below). Paused 2026-11-08: the owner hid the diary for now; the bot sends no Nudge (`DIARY_SHOWN` in `telegram_bot/__main__.py`) and the Mini App drops «Дневник» from its places (`HIDDEN` in `miniapp/static/app.js`); code, API and data stay, so flipping both brings it back.
 
 ## Context
 

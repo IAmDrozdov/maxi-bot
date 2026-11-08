@@ -25,6 +25,8 @@ from .worker import JobQueue, worker_loop
 
 log = get_logger(__name__)
 
+DIARY_SHOWN = False  # the diary is hidden for now (owner, 2026-11-08): no Nudge; the Mini App hides it too (app.js)
+
 COMMANDS = [
     BotCommand(command="help", description="What this bot does"),
     BotCommand(command="settings", description="Languages, models, voice"),
@@ -77,7 +79,9 @@ async def _run() -> None:
     dp["notes"] = notes
     # The Nudge needs the Zone that notes keeps; without notes, or without the diary store, it stays off.
     diary = None
-    if notes is not None:
+    if not DIARY_SHOWN:
+        log.info("diary nudge off: the diary is hidden for now (owner, 2026-11-08)")
+    elif notes is not None:
         try:
             diary = build_diary_runtime(notes.db, owner)
         except Exception:

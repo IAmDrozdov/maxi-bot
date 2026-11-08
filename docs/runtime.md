@@ -160,6 +160,8 @@ below). Enrichment:
 2. The Classifier (`NOTES_CLASSIFIER_PROVIDER`: `openai`, or `fake` offline) chooses the
    Sections, the Russian Gist and the title, and reads a Due when the text asks to be reminded.
    It is told the Capture moment in the Owner's zone; the fake reads «напомни YYYY-MM-DD HH:MM».
+   When a pick is a Main Section, `sections.split_filing` files the Item under the Main picks and the
+   Sections the Owner's words name, and stores the other picks as its Footnote (notes ADR-0014).
 3. `store_enrichment` saves the result and `reminders.fill_from_filing` decides the Due (it fills an
    empty Due only, and one not after the Capture moment is dropped). It returns a `Notice`, and
    `notify(notice)` (`NotesRuntime.notify_for`) sets the reaction from `enrichment_status` on
@@ -290,6 +292,8 @@ sends the Owner «📔 Сегодня в дневнике пусто» with `✍
 pass (`domain.release_nudge`); a lasting Bot API refusal keeps it. Nothing follows the Nudge: no repeat, no
 edit when an Entry appears. The Nudge is off when notes did not start (no Zone) or the diary store cannot
 be opened (`diary nudge disabled` in the log); the rest of the bot runs on.
+Since 2026-11-08 the diary is hidden (ADR-020 status line): `DIARY_SHOWN = False` keeps the Nudge loop off
+(`diary nudge off` in the log), and the Mini App lists no «Дневник» place, even for an old `?place=diary` link.
 
 «⚙️ Расходы» in the place menu opens Расходы (`/api/usage`) as a nested screen; Telegram's back button
 returns to the Place and Mode left.

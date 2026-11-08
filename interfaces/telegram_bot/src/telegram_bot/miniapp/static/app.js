@@ -26,6 +26,9 @@ import { mountUsage } from "./usage.js";
 // Views whose pane fills the fixed shell and scrolls its own parts; every other view scrolls in `main`.
 const FIXED = new Set(["notes:list"]);
 
+// Places kept in code but off the screen; the diary is hidden for now (owner, 2026-11-08; bot: DIARY_SHOWN).
+const HIDDEN = new Set(["diary"]);
+
 // Every place has the same two modes: its working view and its Dashboard.
 const MODES = [
   { id: "list", label: "Записи", word: "записи" },
@@ -46,7 +49,7 @@ const PLACES = [
     },
   },
   { id: "diary", label: "Дневник", mount: { list: mountToday, board: mountDiaryBoard } },
-];
+].filter((place) => !HIDDEN.has(place.id));
 
 // The mode a place opens in: the one the Owner left it in, the working view on a first launch.
 const modeOf = (place) => {
@@ -171,7 +174,7 @@ async function boot() {
   const params = new URLSearchParams(location.search);
   const item = params.get("item");
   const asked = item && /^\d+$/.test(item);
-  const toDiary = !asked && params.get("place") === "diary";
+  const toDiary = !asked && params.get("place") === "diary" && PLACES.some((p) => p.id === "diary");
   const kept = PLACES.some((p) => p.id === prefs().place) ? prefs().place : PLACES[0].id;
   const place = asked ? PLACES[0].id : toDiary ? "diary" : kept;
   const mode = asked || toDiary ? MODES[0].id : modeOf(place);
