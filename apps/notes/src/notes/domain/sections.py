@@ -99,19 +99,19 @@ STARTER_SECTIONS: tuple[tuple[str, str, str, str, str], ...] = (
         "Работа",
         "👨‍💻",
         "#5c6b7a",
-        "Полезное для основной работы: инженерные практики, инструменты для команды, процессы, "
-        "менеджмент, карьера, собеседования. Например: статья про code review, совет по найму. "
-        "Свои проекты — в «Пет-проекты».",
+        "Только то, что владелец своими словами связал с работой: «по работе», «на работе», «для "
+        "работы», задача, которую надо сделать на работе. Статья или ролик на рабочую тему без "
+        "таких слов — не сюда, а по теме. Свои проекты — в «Пет-проекты».",
     ),
     (
         "pet",
         "Пет-проекты",
         "🔥",
         "#3fa04a",
-        "Свои проекты и идеи, что сделать самому: код, библиотеки, репозитории, туториалы, "
-        "ИИ-модели и агенты, которые хочется попробовать. Например: проект на GitHub, идея своего "
-        "сервиса или курса. Своя идея важнее темы ссылки. Если у проекта есть своя секция, клади "
-        "туда, а не сюда.",
+        "Только то, что владелец своими словами связал со своими проектами: «в пет-проект», «для "
+        "своего проекта», задача по своему проекту, идея своего сервиса или приложения. Репозиторий, "
+        "библиотека или туториал без таких слов — не сюда, а по теме. Если у проекта есть своя "
+        "секция, клади туда, а не сюда.",
     ),
     (FROM_BOT_SLUG, "От бота", "👾", "#4f8a8b", ""),  # no hint: the Classifier never sees it
     (
@@ -454,17 +454,20 @@ def refile(conn: sqlite3.Connection, item_id: int, slugs: Sequence[str]) -> None
 def split_filing(
     picks: Sequence[str], named: Sequence[str], main: Collection[str]
 ) -> tuple[list[str], list[str]]:
-    """The Classifier's picks as (Filing, Footnote), notes ADR-0014.
+    """The Classifier's picks as (Filing, Footnote), notes ADR-0014 and ADR-0015.
 
-    A Main pick takes the Item, together with the Sections the Owner's words named; the other picks are the Footnote.
+    A Main pick takes the Item; when the Owner's words name a Section that is not Main, the named
+    Sections take it instead and the Main pick drops out. The other picks are the Footnote.
     """
     if not any(slug in main for slug in picks):
         return list(picks), []
     builtin = (OTHER_SLUG, FROM_BOT_SLUG)
-    home = list(
-        dict.fromkeys([*(s for s in picks if s in main), *(s for s in named if s not in builtin)])
-    )
-    return home, [s for s in picks if s not in home and s not in builtin]
+    named = [s for s in named if s not in builtin]
+    if any(s not in main for s in named):
+        home = list(dict.fromkeys(named))
+    else:
+        home = list(dict.fromkeys([*(s for s in picks if s in main), *named]))
+    return home, [s for s in picks if s not in home and s not in main and s not in builtin]
 
 
 def file_by_classifier(

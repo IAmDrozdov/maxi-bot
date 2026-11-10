@@ -1,6 +1,7 @@
 # A Main Section takes an Item alone; the Sections it would also be in become its Footnote
 
-Status: Accepted (2026-11-08). Amends ADR-0002.
+Status: Accepted (2026-11-08). Amends ADR-0002. Amended by ADR-0015: a Section the Owner's words name
+takes the Item instead of the Main pick, and «AI» became «ПО».
 
 The Owner saves a lot about AI: videos, posts, books. Most of the Owner's Sections are close to AI, so the
 Classifier filed one such Item under «Посмотреть», «Почитать», «Работа» or «Пет-проекты», often under two

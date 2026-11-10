@@ -84,11 +84,11 @@ The built-in Section («От бота») that cannot be deleted and holds every 
 _Avoid_: documents, results, saved, inbox
 
 **Main Section**:
-A Section the Owner marked «Главная». When the Classifier picks it, the Item goes only into it and any Section the Owner's own words name as a topic or project; the other picks become the Item's Footnote (ADR-0014). Other and From the bot are never Main.
+A Section the Owner marked «Главная». When the Classifier picks it, the Item goes only into it; the other picks become the Item's Footnote (ADR-0014). When the Owner's own words name another Section as a topic or project, that Section takes the Item instead, and the Main Section is left out of both (ADR-0015). Other and From the bot are never Main.
 _Avoid_: priority section, primary, pinned, exclusive
 
 **Footnote**:
-The Sections the Classifier also picked for an Item that a Main Section took. The Item's row and card show them, but the Item is not in them. Only the Classifier writes a Footnote, and it never names a Section the Item is in.
+The Sections the Classifier also picked for an Item that a Main Section, or a Section the Owner named instead of it, took. The Item's row and card show them, but the Item is not in them. Only the Classifier writes a Footnote, and it never names a Section the Item is in.
 _Avoid_: also, secondary sections, extra tags, сноска (in code)
 
 **Filing**:

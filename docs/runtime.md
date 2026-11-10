@@ -160,8 +160,9 @@ below). Enrichment:
 2. The Classifier (`NOTES_CLASSIFIER_PROVIDER`: `openai`, or `fake` offline) chooses the
    Sections, the Russian Gist and the title, and reads a Due when the text asks to be reminded.
    It is told the Capture moment in the Owner's zone; the fake reads «напомни YYYY-MM-DD HH:MM».
-   When a pick is a Main Section, `sections.split_filing` files the Item under the Main picks and the
-   Sections the Owner's words name, and stores the other picks as its Footnote (notes ADR-0014).
+   When a pick is a Main Section, `sections.split_filing` files the Item under the Main picks, or
+   under the Sections the Owner's words name when one of them is not Main, and stores the other
+   picks as its Footnote (notes ADR-0014, ADR-0015).
 3. `store_enrichment` saves the result and `reminders.fill_from_filing` decides the Due (it fills an
    empty Due only, and one not after the Capture moment is dropped). It returns a `Notice`, and
    `notify(notice)` (`NotesRuntime.notify_for`) sets the reaction from `enrichment_status` on
